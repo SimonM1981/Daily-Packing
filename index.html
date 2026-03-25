@@ -13,22 +13,21 @@
     .status-next  { background-color: #eab308; color: white; }
     .status-packed { background-color: #10b981; color: white; }
     th, td { padding: 8px 6px; font-size: 0.85rem; white-space: nowrap; }
-    .modal-content { max-height: 90vh; overflow-y: auto; }
+    .modal-content { max-height: 88vh; overflow-y: auto; }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <div class="max-w-7xl mx-auto px-3 pt-4 pb-20">   <!-- Added pb-20 for bottom space -->
-    
+<body class="bg-gray-100 min-h-screen pb-20">
+  <div class="max-w-7xl mx-auto px-3 pt-4">
     <!-- Header -->
     <div class="flex items-center justify-center gap-2 mb-4">
       <span class="text-3xl">📦</span>
       <h1 class="text-2xl font-bold text-indigo-700">Daily Packing</h1>
     </div>
-    <p class="text-center text-gray-600 text-xs mb-6">Team A–H • QR • Google Sheets</p>
+    <p class="text-center text-gray-600 text-xs mb-6">Database • Team A–H • Live QR</p>
 
-    <!-- Controls -->
+    <!-- Controls (Database view) -->
     <div class="bg-white rounded-3xl shadow p-3 flex flex-wrap gap-2 items-center mb-6">
-      <select id="teamSelect" class="flex-1 px-4 py-2.5 text-sm border rounded-2xl focus:outline-none"></select>
+      <select id="teamSelect" class="flex-1 px-4 py-2.5 text-sm border rounded-2xl"></select>
       <input type="date" id="dateFilter" class="px-4 py-2.5 border rounded-2xl text-sm">
       <button onclick="loadData()" class="px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm">
         <i class="fas fa-refresh"></i>
@@ -39,7 +38,7 @@
       </button>
     </div>
 
-    <!-- Table -->
+    <!-- Database Table -->
     <div class="bg-white rounded-3xl shadow overflow-x-auto">
       <table class="w-full">
         <thead class="bg-violet-600 text-white text-xs">
@@ -60,7 +59,7 @@
     </div>
   </div>
 
-  <!-- Add Entry Modal - Compact + Scrollable -->
+  <!-- New Entry Modal -->
   <div id="addModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3">
     <div class="bg-white rounded-3xl w-full max-w-md modal-content shadow-2xl">
       <div class="p-5">
@@ -122,7 +121,6 @@
           </div>
         </div>
 
-        <!-- Save & Cancel - Fixed at bottom of modal -->
         <div class="flex gap-3 mt-8 sticky bottom-0 bg-white pt-4 border-t">
           <button onclick="hideAddModal()" class="flex-1 py-4 text-gray-600 font-medium border border-gray-300 rounded-2xl">Cancel</button>
           <button onclick="submitEntry()" class="flex-1 py-4 bg-emerald-600 text-white font-semibold rounded-2xl">Save Entry</button>
@@ -131,7 +129,7 @@
     </div>
   </div>
 
-  <!-- Live QR Scanner -->
+  <!-- Silent Live QR Scanner -->
   <div id="qrModal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col">
     <div class="p-4 text-white flex justify-between">
       <h3 id="qrTitle" class="text-lg font-semibold">Scan QR Code</h3>
@@ -141,7 +139,7 @@
   </div>
 
   <script>
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby8tGR_Vy7Ivb5fCjX5uaJ8NVNgSSmc2P7uULtVoKK-pwsouGTtCWjfCC_GTkpma_RS/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby8tGR_Vy7Ivb5fCjX5uaJ8NVNgSSmc2P7uULtVoKK-pwsouGTtCWjfCC_GTkpma_RS/exec';  // ← Update if you got a new URL after redeploy
 
     const teams = ["Team A","Team B","Team C","Team D","Team E","Team F","Team G","Team H"];
     let currentTeam = "Team A";
@@ -175,8 +173,7 @@
         rows.forEach((r, i) => {
           const rowNum = i + 2;
           const status = (r[7] || '').toLowerCase().trim();
-          let cls = status === 'packed' ? 'status-packed' : 
-                   (status === 'next day' ? 'status-next' : 'status-under');
+          let cls = status === 'packed' ? 'status-packed' : (status === 'next day' ? 'status-next' : 'status-under');
 
           html += `
             <tr class="hover:bg-gray-50">
@@ -188,8 +185,7 @@
               <td class="text-center">${r[5]||''}</td>
               <td>${r[6]||''}</td>
               <td class="text-center">
-                <span onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" 
-                      class="cursor-pointer px-4 py-1 text-xs font-bold rounded-3xl ${cls}">
+                <span onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" class="cursor-pointer px-4 py-1 text-xs font-bold rounded-3xl ${cls}">
                   ${r[7]||'under'}
                 </span>
               </td>
@@ -199,13 +195,12 @@
 
         tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-10 text-gray-400 text-xs">No data for this date</td></tr>`;
       } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10 text-red-500">Error</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10 text-red-500">Error loading</td></tr>`;
       }
     }
 
     async function cycleStatus(team, row, curr) {
-      let next = curr === 'under packing' ? 'next day' : 
-                (curr === 'next day' ? 'packed' : 'under packing');
+      let next = curr === 'under packing' ? 'next day' : (curr === 'next day' ? 'packed' : 'under packing');
       if (!confirm(`Change to "${next}"?`)) return;
 
       try {
@@ -216,7 +211,7 @@
           headers: {'Content-Type': 'text/plain;charset=utf-8'}
         });
         loadData();
-      } catch(err){ alert('Failed to update'); }
+      } catch(err){ alert('Failed to update status'); }
     }
 
     function showAddModal() {
@@ -243,7 +238,7 @@
       };
 
       if (!payload.customer || !payload.pi || !payload.part) {
-        alert('Customer, PI No. and Part Number required!');
+        alert('Customer, PI No. and Part Number are required!');
         return;
       }
 
@@ -260,16 +255,15 @@
           hideAddModal();
           loadData();
           ['customerInput','piInput','partInput'].forEach(id => document.getElementById(id).value = '');
-          alert('✅ Saved!');
         } else {
-          alert('❌ Failed: ' + (json.error || 'Unknown'));
+          alert('Save failed: ' + (json.error || 'Unknown'));
         }
       } catch (e) {
-        alert('Network error. Please redeploy web app.');
+        alert('Network error – redeploy the web app and try again.');
       }
     }
 
-    // Live QR Scanner
+    // Silent Live QR Scanner
     async function startLiveQR(field) {
       currentQRField = field;
       document.getElementById('qrModal').classList.remove('hidden');
@@ -285,19 +279,19 @@
             if (currentQRField === 'customer') document.getElementById('customerInput').value = text;
             else if (currentQRField === 'pi') document.getElementById('piInput').value = text;
             else if (currentQRField === 'part') document.getElementById('partInput').value = text;
-            stopLiveQR();
-            alert(`✅ Scanned: ${text}`);
+            stopLiveQR();   // close silently
           },
           () => {}
         );
       } catch (err) {
-        alert('Camera permission needed');
+        alert('Camera access needed');
       }
     }
 
     function stopLiveQR() {
       if (html5QrCode) html5QrCode.stop().catch(() => {});
       document.getElementById('qrModal').classList.add('hidden');
+      currentQRField = null;
     }
 
     window.onload = () => {
