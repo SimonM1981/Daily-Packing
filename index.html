@@ -24,12 +24,11 @@
     </div>
     <p class="text-center text-gray-500 mb-8">Database • Team A–H • Live QR</p>
 
-    <!-- Database View -->
+    <!-- Database Controls -->
     <div class="bg-white rounded-3xl shadow-lg p-5 mb-8">
       <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
         <i class="fas fa-database"></i> Database View
       </h2>
-
       <div class="flex flex-wrap gap-3 items-end">
         <div class="flex-1">
           <label class="block text-xs font-medium text-gray-500 mb-1">Team</label>
@@ -72,30 +71,7 @@
     </div>
   </div>
 
-  <!-- New Entry Modal (compact) -->
-  <div id="addModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
-      <div class="p-6">
-        <h2 class="text-2xl font-bold mb-6 text-center">New Entry</h2>
-        <!-- ... same form fields as before ... -->
-        <div class="space-y-5">
-          <div>
-            <label class="block text-sm font-medium mb-1">Date</label>
-            <input type="date" id="dateInput" class="w-full px-4 py-3 border rounded-2xl">
-          </div>
-          <!-- Customer, PI, Part with QR buttons, QTY, Carton, Packed By, Status - same as previous version -->
-          <!-- (To save space I omitted repeating them here - copy from your previous working modal) -->
-        </div>
-
-        <div class="flex gap-3 mt-8">
-          <button onclick="hideAddModal()" class="flex-1 py-4 text-gray-600 font-medium border border-gray-300 rounded-2xl">Cancel</button>
-          <button onclick="submitEntry()" class="flex-1 py-4 bg-emerald-600 text-white font-semibold rounded-2xl">Save Entry</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- QR Modal (silent) - same as before -->
+  <!-- New Entry Modal (keep your existing modal code here - I omitted for brevity, copy from previous version) -->
 
   <script>
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby8tGR_Vy7Ivb5fCjX5uaJ8NVNgSSmc2P7uULtVoKK-pwsouGTtCWjfCC_GTkpma_RS/exec';
@@ -112,27 +88,27 @@
 
     async function loadData() {
       const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-violet-600"></i><p class="mt-3 text-gray-500">Loading...</p></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-gray-500">Loading data from Google Sheet...</td></tr>`;
 
       const selectedDate = document.getElementById('dateFilter').value;
 
       try {
         const url = `${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`;
-        console.log("Fetching from:", url);   // for debugging
+        console.log("Requesting:", url);
 
         const res = await fetch(url);
         const json = await res.json();
-        console.log("Response from server:", json);   // for debugging
+        console.log("Server response:", json);   // ← Check this in Console (F12)
 
-        if (json.error) {
-          throw new Error(json.error);
-        }
+        if (json.error) throw new Error(json.error);
 
-        let rows = (json.data || []).slice(1);
+        let rows = (json.data || []).slice(1);   // skip header
 
+        // Filter by selected date
         if (selectedDate) {
           rows = rows.filter(r => {
-            const rowDate = (r[0] || '').toString().split('T')[0];
+            const rowDateStr = (r[0] || '').toString();
+            const rowDate = rowDateStr.split('T')[0];   // handles both date and datetime
             return rowDate === selectedDate;
           });
         }
@@ -163,12 +139,13 @@
 
         tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-12 text-gray-400">No data for this date</td></tr>`;
       } catch (e) {
-        console.error(e);
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-red-500">Error: ${e.message}<br><small>Check if you redeployed the script</small></td></tr>`;
+        console.error("Load error:", e);
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-red-600">Error: ${e.message}</td></tr>`;
       }
     }
 
-    // cycleStatus, showAddModal, hideAddModal, submitEntry, startLiveQR, stopLiveQR functions remain the same as previous version
+    // Keep your existing cycleStatus, showAddModal, hideAddModal, submitEntry, startLiveQR, stopLiveQR functions here
+    // (copy them from the previous version I gave you)
 
     window.onload = () => {
       populateTeams();
