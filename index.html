@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Packing App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .status-under { background-color: #f59e0b; color: white; }
+    .status-packed { background-color: #10b981; color: white; }
+    .modal { animation: modalPop 0.3s ease; }
+    @keyframes modalPop { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <div class="max-w-7xl mx-auto p-6">
+    <h1 class="text-4xl font-bold text-center mb-2 text-indigo-700">📦 Daily Packing App</h1>
+    <p class="text-center text-gray-600 mb-8">Team-based • QR scanning • Live Google Sheet sync</p>
+
+    <!-- Team selector + controls -->
+    <div class="flex items-center gap-4 mb-8 bg-white p-4 rounded-2xl shadow">
+      <select id="teamSelect" class="px-6 py-3 text-lg font-medium border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500"></select>
+      <button onclick="loadData()" class="px-6 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 flex items-center gap-2">
+        <i class="fas fa-refresh"></i> Refresh
+      </button>
+      <button onclick="showAddModal()" class="px-6 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 flex-1 md:flex-none flex items-center justify-center gap-2">
+        <i class="fas fa-plus"></i> New Packing Entry
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-3xl shadow overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-indigo-700 text-white">
+          <tr>
+            <th class="px-6 py-4 text-left">Date</th>
+            <th class="px-6 py-4 text-left">Customer</th>
+            <th class="px-6 py-4 text-left">PI No.</th>
+            <th class="px-6 py-4 text-left">Part No.</th>
+            <th class="px-6 py-4 text-center">QTY</th>
+            <th class="px-6 py-4 text-center">Cartons</th>
+            <th class="px-6 py-4 text-left">Packed By</th>
+            <th class="px-6 py-4 text-center">Status</th>
+            <th class="px-6 py-4 w-24">Action</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody" class="divide-y"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Entry Modal -->
+  <div id="addModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 modal">
+      <div class="p-8">
+        <h2 class="text-2xl font-bold mb-6 flex items-center gap-2"><i class="fas fa-box"></i> New Entry</h2>
+        
+        <div class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium mb-1">Date</label>
+            <input type="date" id="dateInput" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Customer Name</label>
+              <div class="flex gap-2">
+                <input type="text" id="customerInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500">
+                <button onclick="startQR('customer')" class="px-5 bg-gray-100 hover:bg-gray-200 rounded-2xl"><i class="fas fa-qrcode"></i></button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">PI No.</label>
+              <div class="flex gap-2">
+                <input type="text" id="piInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500">
+                <button onclick="startQR('pi')" class="px-5 bg-gray-100 hover:bg-gray-200 rounded-2xl"><i class="fas fa-qrcode"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Part Number</label>
+              <div class="flex gap-2">
+                <input type="text" id="partInput" class="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500">
+                <button onclick="startQR('part')" class="px-5 bg-gray-100 hover:bg-gray-200 rounded-2xl"><i class="fas fa-qrcode"></i></button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Packed By</label>
+              <input type="text" id="packedByInput" value="Your Name" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">QTY</label>
+              <input type="number" id="qtyInput" value="1" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">QTY Carton</label>
+              <input type="number" id="qtyCartonInput" value="1" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Initial Status</label>
+            <select id="statusInput" class="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-indigo-500">
+              <option value="under packing">Under Packing (Orange)</option>
+              <option value="packed">Packed (Green)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button onclick="hideAddModal()" class="flex-1 py-4 text-gray-500 font-medium rounded-2xl border border-gray-300">Cancel</button>
+          <button onclick="submitEntry()" class="flex-1 py-4 bg-emerald-600 text-white font-semibold rounded-2xl hover:bg-emerald-700">Save to Sheet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Scanner Modal -->
+  <div id="qrModal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
+    <div class="bg-white rounded-3xl w-full max-w-md mx-4 p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-semibold text-xl">Scan QR Code</h3>
+        <button onclick="stopQR()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times text-2xl"></i></button>
+      </div>
+      <div id="qr-reader" class="w-full aspect-video bg-black rounded-2xl overflow-hidden"></div>
+      <p id="qrStatus" class="text-center text-sm text-gray-500 mt-3">Point camera at QR code</p>
+    </div>
+  </div>
+
+  <script>
+    // ================== CONFIG ==================
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby8tGR_Vy7Ivb5fCjX5uaJ8NVNgSSmc2P7uULtVoKK-pwsouGTtCWjfCC_GTkpma_RS/exec';   // ← PASTE YOUR WEB APP URL HERE
+    const teams = ["Team A","Team B","Team C","Team D","Team E","Team F","Team G","Team H"];
+
+    let currentTeam = "Team A";
+    let html5QrCode;
+    let currentField = null;   // 'customer', 'pi', or 'part'
+
+    // ================== TAILWIND INIT ==================
+    function initTailwind() {
+      tailwind.config = { content: ["./**/*.{html,js}"] };
+    }
+
+    // ================== LOAD TEAMS & DATA ==================
+    function populateTeams() {
+      const select = document.getElementById('teamSelect');
+      select.innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join('');
+      select.value = currentTeam;
+      select.onchange = () => { currentTeam = select.value; loadData(); };
+    }
+
+    async function loadData() {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-indigo-600"></i><p class="mt-3 text-gray-500">Loading ${currentTeam} data...</p></td></tr>`;
+
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`);
+        const json = await res.json();
+        
+        if (json.error) throw new Error(json.error);
+        
+        const data = json.data || [];
+        // Skip header row
+        const rows = data.slice(1);
+
+        let html = '';
+        rows.forEach((row, i) => {
+          const sheetRow = i + 2;   // actual Google Sheet row number
+          const status = (row[7] || '').toLowerCase().trim();
+          const statusClass = status === 'packed' ? 'status-packed' : 'status-under';
+          
+          html += `
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4">${row[0] || ''}</td>
+              <td class="px-6 py-4">${row[1] || ''}</td>
+              <td class="px-6 py-4">${row[2] || ''}</td>
+              <td class="px-6 py-4">${row[3] || ''}</td>
+              <td class="px-6 py-4 text-center">${row[4] || ''}</td>
+              <td class="px-6 py-4 text-center">${row[5] || ''}</td>
+              <td class="px-6 py-4">${row[6] || ''}</td>
+              <td class="px-6 py-4 text-center">
+                <span onclick="toggleStatus('${currentTeam}', ${sheetRow}, '${status}')" 
+                      class="cursor-pointer inline-block px-6 py-1.5 text-xs font-semibold rounded-3xl ${statusClass}">
+                  ${row[7] || 'under packing'}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <button onclick="toggleStatus('${currentTeam}', ${sheetRow}, '${status}')" 
+                        class="text-indigo-600 hover:text-indigo-800">
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </td>
+            </tr>`;
+        });
+
+        tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-12 text-gray-400">No entries yet for ${currentTeam}</td></tr>`;
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-red-500">❌ Error loading data. Check WEB_APP_URL.</td></tr>`;
+        console.error(err);
+      }
+    }
+
+    // ================== STATUS TOGGLE ==================
+    async function toggleStatus(team, row, currentStatus) {
+      const newStatus = currentStatus === 'packed' ? 'under packing' : 'packed';
+      
+      if (!confirm(`Change status to "${newStatus}"?`)) return;
+
+      try {
+        await fetch(WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'updateStatus',
+            team: team,
+            row: row,
+            status: newStatus
+          }),
+          headers: { 'Content-Type': 'application/json' }
+        });
+        loadData();
+      } catch (e) {
+        alert('Failed to update status');
+      }
+    }
+
+    // ================== ADD ENTRY ==================
+    function showAddModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+      document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+    }
+
+    function hideAddModal() {
+      document.getElementById('addModal').classList.add('hidden');
+    }
+
+    async function submitEntry() {
+      const payload = {
+        action: 'addEntry',
+        team: currentTeam,
+        date: document.getElementById('dateInput').value,
+        customer: document.getElementById('customerInput').value.trim(),
+        pi: document.getElementById('piInput').value.trim(),
+        part: document.getElementById('partInput').value.trim(),
+        qty: parseInt(document.getElementById('qtyInput').value) || 0,
+        qtyCarton: parseInt(document.getElementById('qtyCartonInput').value) || 0,
+        packedBy: document.getElementById('packedByInput').value.trim(),
+        status: document.getElementById('statusInput').value
+      };
+
+      if (!payload.customer || !payload.pi || !payload.part) {
+        alert('Customer, PI No. and Part Number are required');
+        return;
+      }
+
+      try {
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const json = await res.json();
+        if (json.success) {
+          hideAddModal();
+          loadData();
+          // Clear form
+          document.getElementById('customerInput').value = '';
+          document.getElementById('piInput').value = '';
+          document.getElementById('partInput').value = '';
+          alert('✅ Entry saved successfully!');
+        }
+      } catch (e) {
+        alert('Failed to save entry');
+      }
+    }
+
+    // ================== QR SCANNER ==================
+    function startQR(field) {
+      currentField = field;
+      document.getElementById('qrModal').classList.remove('hidden');
+      document.getElementById('qrStatus').textContent = 'Point camera at QR code';
+
+      const reader = document.getElementById('qr-reader');
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+      }
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // Fill the correct field
+          if (currentField === 'customer') document.getElementById('customerInput').value = decodedText;
+          else if (currentField === 'pi') document.getElementById('piInput').value = decodedText;
+          else if (currentField === 'part') document.getElementById('partInput').value = decodedText;
+          
+          stopQR();
+          alert(`✅ QR scanned for ${currentField.toUpperCase()}`);
+        },
+        (error) => { /* silent */ }
+      ).catch(err => console.error(err));
+    }
+
+    function stopQR() {
+      if (html5QrCode) html5QrCode.stop();
+      document.getElementById('qrModal').classList.add('hidden');
+      currentField = null;
+    }
+
+    // ================== INIT ==================
+    window.onload = () => {
+      initTailwind();
+      populateTeams();
+      loadData();
+    };
+  </script>
+</body>
+</html>
