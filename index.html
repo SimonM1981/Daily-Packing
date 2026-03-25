@@ -24,7 +24,7 @@
     </div>
     <p class="text-center text-gray-500 mb-8">Database • Team A–H • Live QR</p>
 
-    <!-- Database Controls -->
+    <!-- Database View -->
     <div class="bg-white rounded-3xl shadow-lg p-5 mb-8">
       <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
         <i class="fas fa-database"></i> Database View
@@ -71,13 +71,92 @@
     </div>
   </div>
 
-  <!-- New Entry Modal (keep your existing modal code here - I omitted for brevity, copy from previous version) -->
+  <!-- New Entry Modal -->
+  <div id="addModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl">
+      <div class="p-6">
+        <h2 class="text-2xl font-bold mb-6 text-center">New Packing Entry</h2>
+        
+        <div class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium mb-1">Date</label>
+            <input type="date" id="dateInput" class="w-full px-4 py-3 border rounded-2xl">
+          </div>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Customer Name</label>
+              <div class="flex gap-2">
+                <input type="text" id="customerInput" class="flex-1 px-4 py-3 border rounded-2xl">
+                <button onclick="startLiveQR('customer')" class="px-6 bg-gray-100 hover:bg-gray-200 rounded-2xl text-2xl">📷</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">PI No.</label>
+              <div class="flex gap-2">
+                <input type="text" id="piInput" class="flex-1 px-4 py-3 border rounded-2xl">
+                <button onclick="startLiveQR('pi')" class="px-6 bg-gray-100 hover:bg-gray-200 rounded-2xl text-2xl">📷</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Part Number</label>
+              <div class="flex gap-2">
+                <input type="text" id="partInput" class="flex-1 px-4 py-3 border rounded-2xl">
+                <button onclick="startLiveQR('part')" class="px-6 bg-gray-100 hover:bg-gray-200 rounded-2xl text-2xl">📷</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">QTY</label>
+              <input type="number" id="qtyInput" value="1" class="w-full px-4 py-3 border rounded-2xl">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">QTY Carton</label>
+              <input type="number" id="qtyCartonInput" value="1" class="w-full px-4 py-3 border rounded-2xl">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Packed By</label>
+            <input type="text" id="packedByInput" placeholder="Your name" class="w-full px-4 py-3 border rounded-2xl">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Status</label>
+            <select id="statusInput" class="w-full px-4 py-3 border rounded-2xl">
+              <option value="under packing">Under Packing (Orange)</option>
+              <option value="next day">Next Day (Yellow)</option>
+              <option value="packed">Packed (Green)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button onclick="hideAddModal()" class="flex-1 py-4 text-gray-600 font-medium border border-gray-300 rounded-2xl">Cancel</button>
+          <button onclick="submitEntry()" class="flex-1 py-4 bg-emerald-600 text-white font-semibold rounded-2xl">Save Entry</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Scanner Modal -->
+  <div id="qrModal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col">
+    <div class="p-4 text-white flex justify-between">
+      <h3 id="qrTitle" class="text-lg font-semibold">Scan QR Code</h3>
+      <button onclick="stopLiveQR()" class="text-3xl">✕</button>
+    </div>
+    <div id="qr-reader" class="flex-1"></div>
+  </div>
 
   <script>
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby8tGR_Vy7Ivb5fCjX5uaJ8NVNgSSmc2P7uULtVoKK-pwsouGTtCWjfCC_GTkpma_RS/exec';
 
     const teams = ["Team A","Team B","Team C","Team D","Team E","Team F","Team G","Team H"];
     let currentTeam = "Team A";
+    let html5QrCode = null;
+    let currentQRField = null;
 
     function populateTeams() {
       const sel = document.getElementById('teamSelect');
@@ -88,27 +167,22 @@
 
     async function loadData() {
       const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-gray-500">Loading data from Google Sheet...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-gray-500">Loading data...</td></tr>`;
 
       const selectedDate = document.getElementById('dateFilter').value;
 
       try {
-        const url = `${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`;
-        console.log("Requesting:", url);
-
-        const res = await fetch(url);
+        const res = await fetch(`${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`);
         const json = await res.json();
-        console.log("Server response:", json);   // ← Check this in Console (F12)
+        console.log("Response from server:", json);
 
         if (json.error) throw new Error(json.error);
 
-        let rows = (json.data || []).slice(1);   // skip header
+        let rows = (json.data || []).slice(1);
 
-        // Filter by selected date
         if (selectedDate) {
           rows = rows.filter(r => {
-            const rowDateStr = (r[0] || '').toString();
-            const rowDate = rowDateStr.split('T')[0];   // handles both date and datetime
+            const rowDate = (r[0] || '').toString().split('T')[0];
             return rowDate === selectedDate;
           });
         }
@@ -139,14 +213,113 @@
 
         tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-12 text-gray-400">No data for this date</td></tr>`;
       } catch (e) {
-        console.error("Load error:", e);
+        console.error(e);
         tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-red-600">Error: ${e.message}</td></tr>`;
       }
     }
 
-    // Keep your existing cycleStatus, showAddModal, hideAddModal, submitEntry, startLiveQR, stopLiveQR functions here
-    // (copy them from the previous version I gave you)
+    async function cycleStatus(team, row, curr) {
+      let next = curr === 'under packing' ? 'next day' : (curr === 'next day' ? 'packed' : 'under packing');
+      if (!confirm(`Change to "${next}"?`)) return;
 
+      try {
+        await fetch(WEB_APP_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          body: JSON.stringify({action: 'updateStatus', team, row, status: next}),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        loadData();
+      } catch (err) {
+        alert('Failed to update status');
+      }
+    }
+
+    function showAddModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+      const today = document.getElementById('dateFilter').value || new Date().toISOString().split('T')[0];
+      document.getElementById('dateInput').value = today;
+    }
+
+    function hideAddModal() {
+      document.getElementById('addModal').classList.add('hidden');
+    }
+
+    async function submitEntry() {
+      const payload = {
+        action: 'addEntry',
+        team: currentTeam,
+        date: document.getElementById('dateInput').value,
+        customer: document.getElementById('customerInput').value.trim(),
+        pi: document.getElementById('piInput').value.trim(),
+        part: document.getElementById('partInput').value.trim(),
+        qty: Number(document.getElementById('qtyInput').value) || 0,
+        qtyCarton: Number(document.getElementById('qtyCartonInput').value) || 0,
+        packedBy: document.getElementById('packedByInput').value.trim() || 'Unknown',
+        status: document.getElementById('statusInput').value
+      };
+
+      if (!payload.customer || !payload.pi || !payload.part) {
+        alert("Customer, PI No. and Part Number are required!");
+        return;
+      }
+
+      try {
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          body: JSON.stringify(payload),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          hideAddModal();
+          loadData();
+          document.getElementById('customerInput').value = '';
+          document.getElementById('piInput').value = '';
+          document.getElementById('partInput').value = '';
+          alert("✅ Saved successfully!");
+        } else {
+          alert("❌ Save failed: " + (json.error || "Unknown error"));
+        }
+      } catch (e) {
+        alert("Network error. Please redeploy the script again.");
+      }
+    }
+
+    // Live QR Scanner (silent)
+    async function startLiveQR(field) {
+      currentQRField = field;
+      document.getElementById('qrModal').classList.remove('hidden');
+      document.getElementById('qrTitle').textContent = `Scan ${field.toUpperCase()}`;
+
+      if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 12, qrbox: { width: 260, height: 260 } },
+          (text) => {
+            if (currentQRField === 'customer') document.getElementById('customerInput').value = text;
+            else if (currentQRField === 'pi') document.getElementById('piInput').value = text;
+            else if (currentQRField === 'part') document.getElementById('partInput').value = text;
+            stopLiveQR();
+          },
+          () => {}
+        );
+      } catch (err) {
+        alert("Camera permission required");
+      }
+    }
+
+    function stopLiveQR() {
+      if (html5QrCode) html5QrCode.stop().catch(() => {});
+      document.getElementById('qrModal').classList.add('hidden');
+      currentQRField = null;
+    }
+
+    // Initialize
     window.onload = () => {
       populateTeams();
       const today = new Date().toISOString().split('T')[0];
