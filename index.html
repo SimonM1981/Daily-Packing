@@ -12,107 +12,130 @@
     .status-under { background-color: #f59e0b; color: white; }
     .status-next  { background-color: #eab308; color: white; }
     .status-packed { background-color: #10b981; color: white; }
-    th, td { padding: 8px 6px; font-size: 0.85rem; white-space: nowrap; }
+    th, td { padding: 10px 8px; font-size: 0.9rem; }
     .modal-content { max-height: 88vh; overflow-y: auto; }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen pb-20">
-  <div class="max-w-7xl mx-auto px-3 pt-4">
+<body class="bg-gray-50 min-h-screen">
+
+  <div class="max-w-7xl mx-auto px-4 py-6">
+
     <!-- Header -->
-    <div class="flex items-center justify-center gap-2 mb-4">
-      <span class="text-3xl">📦</span>
-      <h1 class="text-2xl font-bold text-indigo-700">Daily Packing</h1>
+    <div class="flex items-center justify-center gap-3 mb-2">
+      <span class="text-4xl">📦</span>
+      <h1 class="text-3xl font-bold text-indigo-700">Daily Packing</h1>
     </div>
-    <p class="text-center text-gray-600 text-xs mb-6">Database • Team A–H • Live QR</p>
+    <p class="text-center text-gray-500 mb-8">Database • Team A–H • Live QR</p>
 
-    <!-- Controls (Database view) -->
-    <div class="bg-white rounded-3xl shadow p-3 flex flex-wrap gap-2 items-center mb-6">
-      <select id="teamSelect" class="flex-1 px-4 py-2.5 text-sm border rounded-2xl"></select>
-      <input type="date" id="dateFilter" class="px-4 py-2.5 border rounded-2xl text-sm">
-      <button onclick="loadData()" class="px-5 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm">
-        <i class="fas fa-refresh"></i>
-      </button>
-      <button onclick="showAddModal()" 
-              class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-6 rounded-3xl flex items-center justify-center gap-2 text-base">
-        <i class="fas fa-plus"></i> New Entry
-      </button>
+    <!-- Database Section (Tab-like) -->
+    <div class="bg-white rounded-3xl shadow-lg p-5 mb-8">
+      <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+        <i class="fas fa-database"></i> Database View
+      </h2>
+
+      <div class="flex flex-wrap gap-3 items-end">
+        <div class="flex-1">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Team</label>
+          <select id="teamSelect" class="w-full px-4 py-3 border border-gray-300 rounded-2xl text-base focus:outline-none focus:border-indigo-500"></select>
+        </div>
+
+        <div class="flex-1">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
+          <input type="date" id="dateFilter" class="w-full px-4 py-3 border border-gray-300 rounded-2xl text-base">
+        </div>
+
+        <button onclick="loadData()" 
+                class="px-6 py-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 flex items-center gap-2 h-fit">
+          <i class="fas fa-refresh"></i> Refresh
+        </button>
+
+        <button onclick="showAddModal()" 
+                class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 px-8 rounded-3xl flex items-center justify-center gap-2 text-base">
+          <i class="fas fa-plus"></i> New Entry
+        </button>
+      </div>
     </div>
 
-    <!-- Database Table -->
-    <div class="bg-white rounded-3xl shadow overflow-x-auto">
-      <table class="w-full">
-        <thead class="bg-violet-600 text-white text-xs">
-          <tr>
-            <th class="text-left pl-3">Date</th>
-            <th class="text-left">Customer</th>
-            <th class="text-left">PI No.</th>
-            <th class="text-left">Part</th>
-            <th class="text-center">QTY</th>
-            <th class="text-center">Carton</th>
-            <th class="text-left">By</th>
-            <th class="text-center">Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tableBody" class="divide-y text-xs"></tbody>
-      </table>
+    <!-- Data Table -->
+    <div class="bg-white rounded-3xl shadow-lg overflow-hidden">
+      <div class="bg-violet-600 text-white px-5 py-4 font-medium">
+        Packing Records
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="bg-violet-700 text-white text-sm">
+              <th class="text-left pl-5 py-3">Date</th>
+              <th class="text-left py-3">Customer</th>
+              <th class="text-left py-3">PI No.</th>
+              <th class="text-left py-3">Part No.</th>
+              <th class="text-center py-3">QTY</th>
+              <th class="text-center py-3">Carton</th>
+              <th class="text-left py-3">Packed By</th>
+              <th class="text-center py-3">Status</th>
+              <th class="w-12 py-3"></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y text-sm"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
   <!-- New Entry Modal -->
-  <div id="addModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3">
+  <div id="addModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-3xl w-full max-w-md modal-content shadow-2xl">
-      <div class="p-5">
-        <h2 class="text-xl font-bold mb-5 text-center">New Entry</h2>
-        
-        <div class="space-y-4 text-sm">
+      <div class="p-6">
+        <h2 class="text-2xl font-bold mb-6 text-center">New Packing Entry</h2>
+
+        <div class="space-y-5">
           <div>
-            <label class="block mb-1 font-medium">Date</label>
+            <label class="block text-sm font-medium mb-1">Date</label>
             <input type="date" id="dateInput" class="w-full px-4 py-3 border rounded-2xl">
           </div>
 
           <div class="grid grid-cols-1 gap-4">
             <div>
-              <label class="block mb-1 font-medium">Customer Name</label>
+              <label class="block text-sm font-medium mb-1">Customer Name</label>
               <div class="flex gap-2">
                 <input type="text" id="customerInput" class="flex-1 px-4 py-3 border rounded-2xl">
-                <button onclick="startLiveQR('customer')" class="px-5 bg-gray-100 hover:bg-gray-200 rounded-2xl text-xl">📷</button>
+                <button onclick="startLiveQR('customer')" class="px-6 bg-gray-100 hover:bg-gray-200 rounded-2xl text-2xl">📷</button>
               </div>
             </div>
             <div>
-              <label class="block mb-1 font-medium">PI No.</label>
+              <label class="block text-sm font-medium mb-1">PI No.</label>
               <div class="flex gap-2">
                 <input type="text" id="piInput" class="flex-1 px-4 py-3 border rounded-2xl">
-                <button onclick="startLiveQR('pi')" class="px-5 bg-gray-100 hover:bg-gray-200 rounded-2xl text-xl">📷</button>
+                <button onclick="startLiveQR('pi')" class="px-6 bg-gray-100 hover:bg-gray-200 rounded-2xl text-2xl">📷</button>
               </div>
             </div>
             <div>
-              <label class="block mb-1 font-medium">Part Number</label>
+              <label class="block text-sm font-medium mb-1">Part Number</label>
               <div class="flex gap-2">
                 <input type="text" id="partInput" class="flex-1 px-4 py-3 border rounded-2xl">
-                <button onclick="startLiveQR('part')" class="px-5 bg-gray-100 hover:bg-gray-200 rounded-2xl text-xl">📷</button>
+                <button onclick="startLiveQR('part')" class="px-6 bg-gray-100 hover:bg-gray-200 rounded-2xl text-2xl">📷</button>
               </div>
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block mb-1 font-medium">QTY</label>
+              <label class="block text-sm font-medium mb-1">QTY</label>
               <input type="number" id="qtyInput" value="1" class="w-full px-4 py-3 border rounded-2xl">
             </div>
             <div>
-              <label class="block mb-1 font-medium">QTY Carton</label>
+              <label class="block text-sm font-medium mb-1">QTY Carton</label>
               <input type="number" id="qtyCartonInput" value="1" class="w-full px-4 py-3 border rounded-2xl">
             </div>
           </div>
 
           <div>
-            <label class="block mb-1 font-medium">Packed By</label>
+            <label class="block text-sm font-medium mb-1">Packed By</label>
             <input type="text" id="packedByInput" placeholder="Your name" class="w-full px-4 py-3 border rounded-2xl">
           </div>
 
           <div>
-            <label class="block mb-1 font-medium">Status</label>
+            <label class="block text-sm font-medium mb-1">Status</label>
             <select id="statusInput" class="w-full px-4 py-3 border rounded-2xl">
               <option value="under packing">Under Packing (Orange)</option>
               <option value="next day">Next Day (Yellow)</option>
@@ -121,7 +144,7 @@
           </div>
         </div>
 
-        <div class="flex gap-3 mt-8 sticky bottom-0 bg-white pt-4 border-t">
+        <div class="flex gap-3 mt-8">
           <button onclick="hideAddModal()" class="flex-1 py-4 text-gray-600 font-medium border border-gray-300 rounded-2xl">Cancel</button>
           <button onclick="submitEntry()" class="flex-1 py-4 bg-emerald-600 text-white font-semibold rounded-2xl">Save Entry</button>
         </div>
@@ -129,17 +152,17 @@
     </div>
   </div>
 
-  <!-- Silent Live QR Scanner -->
+  <!-- Live QR Scanner -->
   <div id="qrModal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col">
-    <div class="p-4 text-white flex justify-between">
+    <div class="p-4 text-white flex justify-between items-center">
       <h3 id="qrTitle" class="text-lg font-semibold">Scan QR Code</h3>
-      <button onclick="stopLiveQR()" class="text-3xl leading-none">✕</button>
+      <button onclick="stopLiveQR()" class="text-3xl">✕</button>
     </div>
     <div id="qr-reader" class="flex-1"></div>
   </div>
 
   <script>
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby8tGR_Vy7Ivb5fCjX5uaJ8NVNgSSmc2P7uULtVoKK-pwsouGTtCWjfCC_GTkpma_RS/exec';  // ← Update if you got a new URL after redeploy
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby8tGR_Vy7Ivb5fCjX5uaJ8NVNgSSmc2P7uULtVoKK-pwsouGTtCWjfCC_GTkpma_RS/exec";
 
     const teams = ["Team A","Team B","Team C","Team D","Team E","Team F","Team G","Team H"];
     let currentTeam = "Team A";
@@ -155,7 +178,7 @@
 
     async function loadData() {
       const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10"><i class="fas fa-spinner fa-spin text-3xl"></i></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-gray-400">Loading data...</td></tr>`;
 
       const selectedDate = document.getElementById('dateFilter').value;
 
@@ -165,19 +188,24 @@
         if (json.error) throw json.error;
 
         let rows = (json.data || []).slice(1);
+
         if (selectedDate) {
-          rows = rows.filter(r => (r[0] || '').toString().split('T')[0] === selectedDate);
+          rows = rows.filter(row => {
+            const rowDate = (row[0] || '').toString().split('T')[0];
+            return rowDate === selectedDate;
+          });
         }
 
         let html = '';
         rows.forEach((r, i) => {
           const rowNum = i + 2;
           const status = (r[7] || '').toLowerCase().trim();
-          let cls = status === 'packed' ? 'status-packed' : (status === 'next day' ? 'status-next' : 'status-under');
+          let cls = status === 'packed' ? 'status-packed' : 
+                   (status === 'next day' ? 'status-next' : 'status-under');
 
           html += `
             <tr class="hover:bg-gray-50">
-              <td class="pl-3">${r[0]||''}</td>
+              <td class="pl-5">${r[0]||''}</td>
               <td>${r[1]||''}</td>
               <td>${r[2]||''}</td>
               <td>${r[3]||''}</td>
@@ -185,38 +213,44 @@
               <td class="text-center">${r[5]||''}</td>
               <td>${r[6]||''}</td>
               <td class="text-center">
-                <span onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" class="cursor-pointer px-4 py-1 text-xs font-bold rounded-3xl ${cls}">
-                  ${r[7]||'under'}
+                <span onclick="cycleStatus('${currentTeam}', ${rowNum}, '${status}')" 
+                      class="cursor-pointer px-5 py-1 text-xs font-bold rounded-3xl ${cls}">
+                  ${r[7] || 'Under Packing'}
                 </span>
               </td>
-              <td><button onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" class="text-violet-600">↻</button></td>
+              <td class="text-center">
+                <button onclick="cycleStatus('${currentTeam}', ${rowNum}, '${status}')" class="text-indigo-600">↻</button>
+              </td>
             </tr>`;
         });
 
-        tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-10 text-gray-400 text-xs">No data for this date</td></tr>`;
+        tbody.innerHTML = html || `<tr><td colspan="9" class="text-center py-12 text-gray-400">No data for this date</td></tr>`;
       } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10 text-red-500">Error loading</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-red-500">Error loading data</td></tr>`;
       }
     }
 
     async function cycleStatus(team, row, curr) {
       let next = curr === 'under packing' ? 'next day' : (curr === 'next day' ? 'packed' : 'under packing');
-      if (!confirm(`Change to "${next}"?`)) return;
+      if (!confirm(`Change status to "${next}"?`)) return;
 
       try {
         await fetch(WEB_APP_URL, {
           method: 'POST',
           redirect: 'follow',
-          body: JSON.stringify({action:'updateStatus', team, row, status: next}),
-          headers: {'Content-Type': 'text/plain;charset=utf-8'}
+          body: JSON.stringify({action: 'updateStatus', team, row, status: next}),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
         loadData();
-      } catch(err){ alert('Failed to update status'); }
+      } catch (err) {
+        alert('Failed to update status');
+      }
     }
 
     function showAddModal() {
       document.getElementById('addModal').classList.remove('hidden');
-      document.getElementById('dateInput').value = document.getElementById('dateFilter').value || new Date().toISOString().split('T')[0];
+      const today = document.getElementById('dateFilter').value || new Date().toISOString().split('T')[0];
+      document.getElementById('dateInput').value = today;
     }
 
     function hideAddModal() {
@@ -238,7 +272,7 @@
       };
 
       if (!payload.customer || !payload.pi || !payload.part) {
-        alert('Customer, PI No. and Part Number are required!');
+        alert("Customer, PI No. and Part Number are required!");
         return;
       }
 
@@ -254,12 +288,16 @@
         if (json.success) {
           hideAddModal();
           loadData();
-          ['customerInput','piInput','partInput'].forEach(id => document.getElementById(id).value = '');
+          // Clear inputs
+          document.getElementById('customerInput').value = '';
+          document.getElementById('piInput').value = '';
+          document.getElementById('partInput').value = '';
+          alert("✅ Entry saved successfully!");
         } else {
-          alert('Save failed: ' + (json.error || 'Unknown'));
+          alert("❌ Save failed: " + (json.error || "Unknown error"));
         }
       } catch (e) {
-        alert('Network error – redeploy the web app and try again.');
+        alert("Network error. Please try again.");
       }
     }
 
@@ -279,12 +317,12 @@
             if (currentQRField === 'customer') document.getElementById('customerInput').value = text;
             else if (currentQRField === 'pi') document.getElementById('piInput').value = text;
             else if (currentQRField === 'part') document.getElementById('partInput').value = text;
-            stopLiveQR();   // close silently
+            stopLiveQR();
           },
           () => {}
         );
       } catch (err) {
-        alert('Camera access needed');
+        alert("Camera permission required");
       }
     }
 
@@ -294,6 +332,7 @@
       currentQRField = null;
     }
 
+    // Initialize
     window.onload = () => {
       populateTeams();
       const today = new Date().toISOString().split('T')[0];
