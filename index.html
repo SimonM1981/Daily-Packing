@@ -182,8 +182,20 @@
 
         if (selectedDate) {
           rows = rows.filter(r => {
-            const rowDate = (r[0] || '').toString().split('T')[0];
-            return rowDate === selectedDate;
+            const cell = r[0];
+            if (!cell) return false;
+
+            let rowDateStr = '';
+
+            if (typeof cell === 'string') {
+              rowDateStr = cell.split('T')[0].split(' ')[0];
+            } else if (cell instanceof Date || (cell && typeof cell.getTime === 'function')) {
+              rowDateStr = cell.toISOString().split('T')[0];
+            } else {
+              rowDateStr = String(cell).split('T')[0].split(' ')[0];
+            }
+
+            return rowDateStr === selectedDate;
           });
         }
 
@@ -191,7 +203,8 @@
         rows.forEach((r, i) => {
           const rowNum = i + 2;
           const status = (r[7] || '').toLowerCase().trim();
-          let cls = status === 'packed' ? 'status-packed' : (status === 'next day' ? 'status-next' : 'status-under');
+          let cls = status === 'packed' ? 'status-packed' : 
+                   (status === 'next day' ? 'status-next' : 'status-under');
 
           html += `
             <tr class="hover:bg-gray-50">
@@ -203,7 +216,8 @@
               <td class="text-center">${r[5]||''}</td>
               <td>${r[6]||''}</td>
               <td class="text-center">
-                <span onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" class="cursor-pointer px-5 py-1 text-xs font-bold rounded-3xl ${cls}">
+                <span onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" 
+                      class="cursor-pointer px-5 py-1 text-xs font-bold rounded-3xl ${cls}">
                   ${r[7] || 'Under Packing'}
                 </span>
               </td>
@@ -288,7 +302,7 @@
       }
     }
 
-    // Live QR Scanner (silent)
+    // Silent Live QR Scanner
     async function startLiveQR(field) {
       currentQRField = field;
       document.getElementById('qrModal').classList.remove('hidden');
