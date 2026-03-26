@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; }
-    .status-under { background-color: #f59e0b; color: white; }
-    .status-next  { background-color: #eab308; color: white; }
-    .status-packed { background-color: #10b981; color: white; }
+    .status-under { background-color: #f59e0b; color: white; }   /* Orange */
+    .status-next  { background-color: #d97706; color: white; }   /* Brown */
+    .status-packed { background-color: #10b981; color: white; }  /* Green */
     th, td { padding: 9px 7px; font-size: 0.88rem; }
     .modal-content { max-height: 92vh; overflow-y: auto; }
   </style>
@@ -19,7 +19,6 @@
 <body class="bg-gray-50 min-h-screen">
 
   <div class="max-w-7xl mx-auto px-3 py-5">
-    <!-- Header -->
     <div class="flex items-center justify-center gap-2 mb-3">
       <span class="text-3xl">📦</span>
       <h1 class="text-2xl font-bold text-indigo-700">Daily Packing</h1>
@@ -73,7 +72,7 @@
     </div>
   </div>
 
-  <!-- Compact New Entry Modal -->
+  <!-- New Entry Modal -->
   <div id="addModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3">
     <div class="bg-white rounded-3xl w-full max-w-md modal-content shadow-2xl">
       <div class="p-5">
@@ -129,13 +128,12 @@
             <label class="block mb-1 font-medium">Status</label>
             <select id="statusInput" class="w-full px-4 py-3 border rounded-2xl">
               <option value="under packing">Under Packing (Orange)</option>
-              <option value="next day">Next Day (Yellow)</option>
+              <option value="next day">Next Day (Brown)</option>
               <option value="packed">Packed (Green)</option>
             </select>
           </div>
         </div>
 
-        <!-- Save buttons - sticky at bottom -->
         <div class="flex gap-3 mt-6 pt-4 border-t sticky bottom-0 bg-white">
           <button onclick="hideAddModal()" class="flex-1 py-4 text-gray-600 font-medium border border-gray-300 rounded-2xl">Cancel</button>
           <button onclick="submitEntry()" class="flex-1 py-4 bg-emerald-600 text-white font-semibold rounded-2xl">Save Entry</button>
@@ -198,7 +196,8 @@
         rows.forEach((r, i) => {
           const rowNum = i + 2;
           const status = (r[7] || '').toLowerCase().trim();
-          let cls = status === 'packed' ? 'status-packed' : (status === 'next day' ? 'status-next' : 'status-under');
+          let cls = status === 'packed' ? 'status-packed' : 
+                   (status === 'next day' ? 'status-next' : 'status-under');
 
           html += `
             <tr class="hover:bg-gray-50">
@@ -210,8 +209,9 @@
               <td class="text-center">${r[5]||''}</td>
               <td>${r[6]||''}</td>
               <td class="text-center">
-                <span onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" class="cursor-pointer px-4 py-1 text-xs font-bold rounded-3xl ${cls}">
-                  ${r[7] || 'Under'}
+                <span onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" 
+                      class="cursor-pointer px-4 py-1 text-xs font-bold rounded-3xl ${cls}">
+                  ${r[7] || 'Under Packing'}
                 </span>
               </td>
               <td><button onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" class="text-indigo-600">↻</button></td>
@@ -224,18 +224,26 @@
       }
     }
 
+    // Cycle Status: Under Packing → Next Day → Packed → Under Packing
     async function cycleStatus(team, row, curr) {
-      let next = curr === 'under packing' ? 'next day' : (curr === 'next day' ? 'packed' : 'under packing');
-      if (!confirm(`Change to "${next}"?`)) return;
+      let next = '';
+      if (curr === 'under packing') next = 'next day';
+      else if (curr === 'next day') next = 'packed';
+      else next = 'under packing';
+
+      if (!confirm(`Change status to "${next}"?`)) return;
+
       try {
         await fetch(WEB_APP_URL, {
           method: 'POST',
           redirect: 'follow',
-          body: JSON.stringify({action:'updateStatus', team, row, status: next}),
-          headers: {'Content-Type':'text/plain;charset=utf-8'}
+          body: JSON.stringify({action: 'updateStatus', team, row, status: next}),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
         loadData();
-      } catch(err){ alert('Failed to update'); }
+      } catch (err) {
+        alert('Failed to update status');
+      }
     }
 
     function showAddModal() {
@@ -297,13 +305,17 @@
       if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
 
       try {
-        await html5QrCode.start({ facingMode: "environment" }, { fps: 12, qrbox: { width: 260, height: 260 } },
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 12, qrbox: { width: 260, height: 260 } },
           (text) => {
             if (currentQRField === 'customer') document.getElementById('customerInput').value = text;
             else if (currentQRField === 'pi') document.getElementById('piInput').value = text;
             else if (currentQRField === 'part') document.getElementById('partInput').value = text;
             stopLiveQR();
-          }, () => {});
+          },
+          () => {}
+        );
       } catch (err) {
         alert("Camera permission required");
       }
