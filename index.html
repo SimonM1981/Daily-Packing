@@ -134,8 +134,11 @@
         </div>
 
         <div class="flex gap-3 mt-6 pt-4 border-t sticky bottom-0 bg-white">
-          <button onclick="hideAddModal()" class="flex-1 py-4 text-gray-600 font-medium border border-gray-300 rounded-2xl">Cancel</button>
-          <button onclick="submitEntry()" class="flex-1 py-4 bg-emerald-600 text-white font-semibold rounded-2xl">Save Entry</button>
+          <button onclick="hideAddModal()" id="cancelBtn" class="flex-1 py-4 text-gray-600 font-medium border border-gray-300 rounded-2xl">Cancel</button>
+          <button onclick="submitEntry()" id="saveBtn" 
+                  class="flex-1 py-4 bg-emerald-600 text-white font-semibold rounded-2xl flex items-center justify-center gap-2">
+            <span id="saveText">Save Entry</span>
+          </button>
         </div>
       </div>
     </div>
@@ -157,6 +160,7 @@
     let currentTeam = "Team A";
     let html5QrCode = null;
     let currentQRField = null;
+    let isSaving = false;   // Prevent multiple saves
 
     function populateTeams() {
       const sel = document.getElementById('teamSelect');
@@ -208,7 +212,7 @@
               <td class="text-center">${r[5]||''}</td>
               <td>${r[6]||''}</td>
               <td class="text-center">
-                <span onclick="changeStatus('${currentTeam}', ${rowNum}, '${status}')" 
+                <span onclick="changeStatus('${currentTeam}',${rowNum},'${status}')" 
                       class="cursor-pointer px-5 py-1 text-xs font-bold rounded-3xl ${cls}">
                   ${r[7] || 'Under Packing'}
                 </span>
@@ -223,7 +227,7 @@
       }
     }
 
-    // Direct Status Change (Choose any of 3)
+    // Direct Status Change
     async function changeStatus(team, row, currentStatus) {
       const options = [
         { value: "under packing", label: "Under Packing (Orange)" },
@@ -232,18 +236,13 @@
       ];
 
       let message = "Choose new status:\n\n";
-      options.forEach((opt, i) => {
-        message += `${i+1}. ${opt.label}\n`;
-      });
+      options.forEach((opt, i) => message += `${i+1}. ${opt.label}\n`);
 
       const choice = prompt(message, "1");
       if (!choice) return;
 
       const index = parseInt(choice) - 1;
-      if (index < 0 || index >= options.length) {
-        alert("Invalid choice");
-        return;
-      }
+      if (index < 0 || index >= options.length) return;
 
       const newStatus = options[index].value;
 
@@ -268,9 +267,26 @@
 
     function hideAddModal() {
       document.getElementById('addModal').classList.add('hidden');
+      resetSaveButton();
+    }
+
+    function resetSaveButton() {
+      isSaving = false;
+      const btn = document.getElementById('saveBtn');
+      const text = document.getElementById('saveText');
+      btn.disabled = false;
+      text.textContent = "Save Entry";
     }
 
     async function submitEntry() {
+      if (isSaving) return;   // Prevent double click
+
+      isSaving = true;
+      const btn = document.getElementById('saveBtn');
+      const text = document.getElementById('saveText');
+      btn.disabled = true;
+      text.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
       const payload = {
         action: 'addEntry',
         team: currentTeam,
@@ -286,6 +302,7 @@
 
       if (!payload.customer || !payload.pi || !payload.part) {
         alert("Customer, PI No. and Part Number are required!");
+        resetSaveButton();
         return;
       }
 
@@ -304,13 +321,16 @@
           ['customerInput','piInput','partInput'].forEach(id => document.getElementById(id).value = '');
           alert("✅ Saved successfully!");
         } else {
-          alert("❌ Save failed");
+          alert("❌ Save failed: " + (json.error || "Unknown error"));
         }
       } catch (e) {
-        alert("Network error");
+        alert("Network error. Please try again.");
+      } finally {
+        resetSaveButton();
       }
     }
 
+    // Live QR Scanner (silent)
     async function startLiveQR(field) {
       currentQRField = field;
       document.getElementById('qrModal').classList.remove('hidden');
