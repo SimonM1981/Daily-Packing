@@ -9,11 +9,10 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; }
-    .status-under { background-color: #f59e0b; color: white; }   /* Orange */
-    .status-next  { background-color: #d97706; color: white; }   /* Brown */
-    .status-packed { background-color: #10b981; color: white; }  /* Green */
-    th, td { padding: 9px 7px; font-size: 0.88rem; }
-    .modal-content { max-height: 92vh; overflow-y: auto; }
+    .status-under { background-color: #f59e0b; color: white; }
+    .status-next  { background-color: #d97706; color: white; }
+    .status-packed { background-color: #10b981; color: white; }
+    th, td { padding: 10px 8px; font-size: 0.9rem; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -74,7 +73,7 @@
 
   <!-- New Entry Modal -->
   <div id="addModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3">
-    <div class="bg-white rounded-3xl w-full max-w-md modal-content shadow-2xl">
+    <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl">
       <div class="p-5">
         <h2 class="text-xl font-bold mb-5 text-center">New Entry</h2>
         
@@ -209,12 +208,12 @@
               <td class="text-center">${r[5]||''}</td>
               <td>${r[6]||''}</td>
               <td class="text-center">
-                <span onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" 
-                      class="cursor-pointer px-4 py-1 text-xs font-bold rounded-3xl ${cls}">
+                <span onclick="changeStatus('${currentTeam}', ${rowNum}, '${status}')" 
+                      class="cursor-pointer px-5 py-1 text-xs font-bold rounded-3xl ${cls}">
                   ${r[7] || 'Under Packing'}
                 </span>
               </td>
-              <td><button onclick="cycleStatus('${currentTeam}',${rowNum},'${status}')" class="text-indigo-600">↻</button></td>
+              <td></td>
             </tr>`;
         });
 
@@ -224,20 +223,35 @@
       }
     }
 
-    // Cycle Status: Under Packing → Next Day → Packed → Under Packing
-    async function cycleStatus(team, row, curr) {
-      let next = '';
-      if (curr === 'under packing') next = 'next day';
-      else if (curr === 'next day') next = 'packed';
-      else next = 'under packing';
+    // Direct Status Change (Choose any of 3)
+    async function changeStatus(team, row, currentStatus) {
+      const options = [
+        { value: "under packing", label: "Under Packing (Orange)" },
+        { value: "next day", label: "Next Day (Brown)" },
+        { value: "packed", label: "Packed (Green)" }
+      ];
 
-      if (!confirm(`Change status to "${next}"?`)) return;
+      let message = "Choose new status:\n\n";
+      options.forEach((opt, i) => {
+        message += `${i+1}. ${opt.label}\n`;
+      });
+
+      const choice = prompt(message, "1");
+      if (!choice) return;
+
+      const index = parseInt(choice) - 1;
+      if (index < 0 || index >= options.length) {
+        alert("Invalid choice");
+        return;
+      }
+
+      const newStatus = options[index].value;
 
       try {
         await fetch(WEB_APP_URL, {
           method: 'POST',
           redirect: 'follow',
-          body: JSON.stringify({action: 'updateStatus', team, row, status: next}),
+          body: JSON.stringify({action: 'updateStatus', team, row, status: newStatus}),
           headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
         loadData();
