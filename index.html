@@ -176,10 +176,13 @@
 
         if (json.error) throw new Error(json.error);
 
-        let rows = (json.data || []).slice(1);   // skip header
+        // We need to keep the original row numbers
+        let originalRows = (json.data || []).slice(1);   // full data with correct row numbers
+
+        let displayRows = originalRows;
 
         if (selectedDate) {
-          rows = rows.filter(r => {
+          displayRows = originalRows.filter(r => {
             const cell = r[0];
             if (!cell) return false;
             let rowDateStr = '';
@@ -191,10 +194,9 @@
         }
 
         let html = '';
-        rows.forEach((r, i) => {
-          // FIXED: Use the correct real row number from the original sheet
-          // Since we slice(1), the index i + 2 gives the actual row in the sheet
-          const realRowNum = i + 2;
+        displayRows.forEach((r, displayIndex) => {
+          // Get the real row number from the original position
+          const realRowNum = originalRows.indexOf(r) + 2;
 
           const status = (r[7] || '').toLowerCase().trim();
           let cls = status === 'packed' ? 'status-packed' : 
@@ -251,7 +253,7 @@
           body: JSON.stringify({action: 'updateStatus', team, row, status: newStatus}),
           headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
-        loadData();   // Refresh after update
+        loadData();   // Refresh the table
       } catch (err) {
         alert('Failed to update status');
       }
@@ -328,7 +330,6 @@
       }
     }
 
-    // Live QR Scanner
     async function startLiveQR(field) {
       currentQRField = field;
       document.getElementById('qrModal').classList.remove('hidden');
