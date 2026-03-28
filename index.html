@@ -176,7 +176,7 @@
 
         if (json.error) throw new Error(json.error);
 
-        let rows = (json.data || []).slice(1);
+        let rows = (json.data || []).slice(1);   // skip header
 
         if (selectedDate) {
           rows = rows.filter(r => {
@@ -192,7 +192,8 @@
 
         let html = '';
         rows.forEach((r, i) => {
-          // FIXED: Use the correct real row number from the original sheet data
+          // FIXED: Use the correct real row number from the original sheet
+          // Since we slice(1), the index i + 2 gives the actual row in the sheet
           const realRowNum = i + 2;
 
           const status = (r[7] || '').toLowerCase().trim();
@@ -250,7 +251,7 @@
           body: JSON.stringify({action: 'updateStatus', team, row, status: newStatus}),
           headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
-        loadData();   // Refresh table after update
+        loadData();   // Refresh after update
       } catch (err) {
         alert('Failed to update status');
       }
@@ -327,7 +328,7 @@
       }
     }
 
-    // Live QR Scanner (silent)
+    // Live QR Scanner
     async function startLiveQR(field) {
       currentQRField = field;
       document.getElementById('qrModal').classList.remove('hidden');
