@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+
+html_content = '''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -209,9 +210,6 @@
     .stat-card.amber { 
       background: linear-gradient(135deg, rgba(245,158,11,0.9) 0%, rgba(217,119,6,0.9) 100%);
     }
-    .stat-card.red { 
-      background: linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%);
-    }
     
     .export-option {
       transition: all 0.3s;
@@ -272,20 +270,20 @@
       </div>
     </div>
 
-    <!-- OT Info Bar -->
-    <div id="otInfoBar" class="hidden mb-4 fade-in">
+    <!-- OT Info Bar - ALWAYS VISIBLE -->
+    <div id="otInfoBar" class="mb-4 fade-in">
       <div class="glass rounded-2xl p-3 flex items-center justify-between shadow-lg border border-purple-300/30">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full ot-badge flex items-center justify-center">
             <i class="fas fa-user-clock text-sm"></i>
           </div>
           <div>
-            <span class="text-sm font-bold text-gray-700 dark:text-gray-200" id="otDisplayText">Team A: 3 staff OT</span>
+            <span class="text-sm font-bold text-gray-700 dark:text-gray-200" id="otDisplayText">Team A: No OT</span>
             <span class="text-xs text-gray-500 dark:text-gray-400 ml-2" id="otDisplayDate">18/05/2026</span>
           </div>
         </div>
         <button onclick="showOTModal()" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-xs font-bold transition">
-          <i class="fas fa-edit mr-1"></i> Edit OT
+          <i class="fas fa-edit mr-1"></i> Set OT
         </button>
       </div>
     </div>
@@ -298,7 +296,7 @@
         </div>
         <div>
           <p class="font-bold text-sm" id="warningText">กรุณาตรวจสอบ จำนวนยังไม่ครบ 20 กล่อง โปรดเพิ่มสินค้าเพื่อทำการแพ็ค</p>
-          <p class="text-xs opacity-80 mt-0.5" id="warningSubtext">Team A • Cartons: 15/20 • Staff: 3 คน OT</p>
+          <p class="text-xs opacity-80 mt-0.5" id="warningSubtext">Team A • Cartons: 15/20 • Staff: 0 คน OT</p>
         </div>
       </div>
     </div>
@@ -349,10 +347,6 @@
         
         <button onclick="toggleDarkMode()" class="px-3 py-2.5 glass hover:bg-white/50 dark:hover:bg-white/10 rounded-2xl transition shadow-sm" title="Dark Mode">
           <i id="darkModeIcon" class="fas fa-moon text-gray-600 dark:text-yellow-400 text-sm"></i>
-        </button>
-        
-        <button onclick="showOTModal()" class="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl hover:shadow-lg transition shadow-md active:scale-95 btn-glow flex items-center gap-2 text-sm font-semibold" title="Set OT Staff">
-          <i class="fas fa-user-clock"></i> OT
         </button>
         
         <button onclick="showExportModal()" class="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl hover:shadow-lg transition shadow-md active:scale-95 btn-glow flex items-center gap-2 text-sm font-semibold">
@@ -717,7 +711,7 @@
     let searchTerm = '';
     let exportMode = 'current';
     let exportFormat = 'csv';
-    let otData = [];  // Stores OT records from OT_Log sheet
+    let otData = [];
 
     function createParticles() {
       const container = document.getElementById('particles');
@@ -807,6 +801,7 @@
       updateStats(rows);
       renderTable(rows);
       checkCartonWarning(rows);
+      updateOTDisplay();
     }
 
     function sortBy(col) {
@@ -872,7 +867,7 @@
       }
     }
 
-    // ===== OT MODAL =====
+        // ===== OT MODAL =====
     function showOTModal() {
       const selectedDate = document.getElementById('dateFilter').value || formatDate(new Date());
       document.getElementById('otModalTeamDate').textContent = `${currentTeam} • ${formatThaiDate(selectedDate)}`;
@@ -1052,7 +1047,7 @@
           return;
         }
 
-                // Fetch OT data for export
+        // Fetch OT data for export
         const otRes = await fetch(`${WEB_APP_URL}?action=getOTData`);
         const otJson = await otRes.json();
         const allOTData = otJson.otData || [];
@@ -1066,7 +1061,6 @@
           csvRows.push(...dataToExport.map(r => {
             const rowDate = String(r[0]).split('T')[0];
             const teamName = r[8] || '';
-            // Find OT for this date+team
             const otRecord = allOTData.find(o => {
               const od = String(o.date).split('T')[0];
               return od === rowDate && o.team === teamName;
@@ -1075,12 +1069,12 @@
             
             return [
               r[0] || '', 
-              `"${String(r[1] || '').replace(/"/g, '""')}"`,
-              `"${String(r[2] || '').replace(/"/g, '""')}"`,
-              `"${String(r[3] || '').replace(/"/g, '""')}"`,
+              '"' + String(r[1] || '').replace(/"/g, '""') + '"',
+              '"' + String(r[2] || '').replace(/"/g, '""') + '"',
+              '"' + String(r[3] || '').replace(/"/g, '""') + '"',
               r[4] || 0, 
               r[5] || 0,
-              `"${String(r[6] || '').replace(/"/g, '""')}"`,
+              '"' + String(r[6] || '').replace(/"/g, '""') + '"',
               r[7] || '',
               teamName,
               otCount
@@ -1237,7 +1231,7 @@
       const tbody = document.getElementById('tableBody');
       let html = '';
       for (let i = 0; i < 5; i++) {
-        html += `<tr class="dark:bg-dark-card"><td colspan="10" class="p-3"><div class="skeleton h-10 rounded-xl"></div></td></tr>`;
+        html += '<tr class="dark:bg-dark-card"><td colspan="10" class="p-3"><div class="skeleton h-10 rounded-xl"></div></td></tr>';
       }
       tbody.innerHTML = html;
       document.getElementById('statsBar').style.display = 'none';
@@ -1247,14 +1241,12 @@
       if (!silent) showSkeleton();
       
       try {
-        // Load packing data
         const res = await fetch(`${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`);
         const json = await res.json();
         if (json.error) throw new Error(json.error);
 
         allData = (json.data || []).slice(1);
         
-        // Load OT data
         await loadOTData();
         
         applyFilters();
@@ -1290,13 +1282,19 @@
       });
       
       const otBar = document.getElementById('otInfoBar');
-      if (otRecord && otRecord.otStaff > 0) {
-        otBar.classList.remove('hidden');
+      const otCount = otRecord ? Number(otRecord.otStaff) : 0;
+      
+      // ALWAYS show the bar, just update the text
+      otBar.classList.remove('hidden');
+      
+      if (otCount > 0) {
         document.getElementById('otDisplayText').textContent = 
-          `${currentTeam}: ${otRecord.otStaff} staff OT`;
+          currentTeam + ': ' + otCount + ' staff OT';
         document.getElementById('otDisplayDate').textContent = formatThaiDate(selectedDate);
       } else {
-        otBar.classList.add('hidden');
+        document.getElementById('otDisplayText').textContent = 
+          currentTeam + ': No OT today';
+        document.getElementById('otDisplayDate').textContent = formatThaiDate(selectedDate);
       }
     }
 
@@ -1308,18 +1306,17 @@
       
       const totalCartons = rows.reduce((sum, r) => sum + (Number(r[5]) || 0), 0);
       
-      // Get OT count for this date+team (NOT summed from rows)
       const selectedDate = document.getElementById('dateFilter').value || formatDate(new Date());
       const otRecord = otData.find(r => {
         const d = String(r.date).split('T')[0];
         return d === selectedDate && r.team === currentTeam;
       });
-      const otStaff = otRecord ? otRecord.otStaff : 0;
+      const otStaff = otRecord ? Number(otRecord.otStaff) : 0;
       
       if (rows.length > 0 && totalCartons < 20) {
         banner.classList.remove('hidden');
-        warningText.textContent = `กรุณาตรวจสอบ ${currentTeam} จำนวนยังไม่ครบ 20 กล่อง โปรดเพิ่มสินค้าเพื่อทำการแพ็ค`;
-        warningSubtext.textContent = `${currentTeam} • Cartons: ${totalCartons}/20 • Staff: ${otStaff} คน OT`;
+        warningText.textContent = 'กรุณาตรวจสอบ ' + currentTeam + ' จำนวนยังไม่ครบ 20 กล่อง โปรดเพิ่มสินค้าเพื่อทำการแพ็ค';
+        warningSubtext.textContent = currentTeam + ' • Cartons: ' + totalCartons + '/20 • Staff: ' + otStaff + ' คน OT';
       } else {
         banner.classList.add('hidden');
       }
@@ -1338,13 +1335,13 @@
       document.getElementById('totalQty').textContent = totalQty.toLocaleString();
       document.getElementById('totalCartons').textContent = totalCartons.toLocaleString();
       document.getElementById('totalEntries').textContent = rows.length;
-      document.getElementById('recordCount').textContent = `${rows.length} records`;
+      document.getElementById('recordCount').textContent = rows.length + ' records';
       statsBar.style.display = 'grid';
     }
 
     function highlightText(text, term) {
       if (!term || !text) return text;
-      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      const regex = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
       return text.replace(regex, '<span class="highlight">$1</span>');
     }
 
@@ -1427,7 +1424,7 @@
         { value: "packed", label: "Packed" }
       ];
       let message = "Choose new status:\n\n";
-      options.forEach((opt, i) => message += `${i+1}. ${opt.label}\n`);
+      options.forEach((opt, i) => message += (i+1) + '. ' + opt.label + '\n');
       const choice = prompt(message, "1");
       if (!choice) return;
       const index = parseInt(choice) - 1;
@@ -1528,7 +1525,7 @@
       const btn = document.getElementById('saveBtn');
       const text = document.getElementById('saveText');
       btn.disabled = true;
-      text.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+      text.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
       const isEdit = document.getElementById('editRowNum').value !== '';
       let dateVal = document.getElementById('dateInput').value;
@@ -1607,7 +1604,7 @@
     async function startLiveQR(field) {
       currentQRField = field;
       document.getElementById('qrModal').classList.remove('hidden');
-      document.getElementById('qrTitle').textContent = `Scan ${field.toUpperCase()}`;
+      document.getElementById('qrTitle').textContent = 'Scan ' + field.toUpperCase();
       if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
 
       try {
@@ -1634,7 +1631,8 @@
     }
 
     // ===== TOAST =====
-    function showToast(message, duration = 2500) {
+    function showToast(message, duration) {
+      duration = duration || 2500;
       const existing = document.querySelector('.toast-notification');
       if (existing) existing.remove();
       
@@ -1688,4 +1686,3 @@
   </script>
 </body>
 </html>
-        
