@@ -209,6 +209,9 @@
     .stat-card.amber { 
       background: linear-gradient(135deg, rgba(245,158,11,0.9) 0%, rgba(217,119,6,0.9) 100%);
     }
+    .stat-card.red { 
+      background: linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%);
+    }
     
     .export-option {
       transition: all 0.3s;
@@ -235,6 +238,11 @@
     @keyframes pulse-warning {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.85; }
+    }
+    
+    .ot-badge {
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      color: white;
     }
     
     .stagger-1 { animation-delay: 0.1s; opacity: 0; }
@@ -264,6 +272,24 @@
       </div>
     </div>
 
+    <!-- OT Info Bar -->
+    <div id="otInfoBar" class="hidden mb-4 fade-in">
+      <div class="glass rounded-2xl p-3 flex items-center justify-between shadow-lg border border-purple-300/30">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full ot-badge flex items-center justify-center">
+            <i class="fas fa-user-clock text-sm"></i>
+          </div>
+          <div>
+            <span class="text-sm font-bold text-gray-700 dark:text-gray-200" id="otDisplayText">Team A: 3 staff OT</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400 ml-2" id="otDisplayDate">18/05/2026</span>
+          </div>
+        </div>
+        <button onclick="showOTModal()" class="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-xs font-bold transition">
+          <i class="fas fa-edit mr-1"></i> Edit OT
+        </button>
+      </div>
+    </div>
+
     <!-- Thai Warning Banner (shown when cartons < 20) -->
     <div id="warningBanner" class="hidden warning-banner rounded-2xl p-4 mb-5 shadow-lg fade-in">
       <div class="flex items-center gap-3">
@@ -272,13 +298,13 @@
         </div>
         <div>
           <p class="font-bold text-sm" id="warningText">กรุณาตรวจสอบ จำนวนยังไม่ครบ 20 กล่อง โปรดเพิ่มสินค้าเพื่อทำการแพ็ค</p>
-          <p class="text-xs opacity-80 mt-0.5" id="warningSubtext">Team A • Cartons: 15/20 • Staff: 3/3</p>
+          <p class="text-xs opacity-80 mt-0.5" id="warningSubtext">Team A • Cartons: 15/20 • Staff: 3 คน OT</p>
         </div>
       </div>
     </div>
 
     <!-- Stats Summary -->
-    <div id="statsBar" class="grid grid-cols-4 gap-3 mb-5 fade-in stagger-1" style="display:none;">
+    <div id="statsBar" class="grid grid-cols-3 gap-3 mb-5 fade-in stagger-1" style="display:none;">
       <div class="stat-card rounded-2xl p-4 text-white text-center shadow-lg border border-white/20">
         <div class="text-xs opacity-80 font-medium uppercase tracking-wider">Total QTY</div>
         <div id="totalQty" class="text-3xl font-bold mt-1">0</div>
@@ -290,10 +316,6 @@
       <div class="glass rounded-2xl p-4 text-center shadow-lg">
         <div class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">Entries</div>
         <div id="totalEntries" class="text-3xl font-bold text-gray-700 dark:text-gray-200 mt-1">0</div>
-      </div>
-      <div class="stat-card amber rounded-2xl p-4 text-white text-center shadow-lg border border-white/20">
-        <div class="text-xs opacity-80 font-medium uppercase tracking-wider">OT Staff</div>
-        <div id="totalOT" class="text-3xl font-bold mt-1">0</div>
       </div>
     </div>
 
@@ -327,6 +349,10 @@
         
         <button onclick="toggleDarkMode()" class="px-3 py-2.5 glass hover:bg-white/50 dark:hover:bg-white/10 rounded-2xl transition shadow-sm" title="Dark Mode">
           <i id="darkModeIcon" class="fas fa-moon text-gray-600 dark:text-yellow-400 text-sm"></i>
+        </button>
+        
+        <button onclick="showOTModal()" class="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl hover:shadow-lg transition shadow-md active:scale-95 btn-glow flex items-center gap-2 text-sm font-semibold" title="Set OT Staff">
+          <i class="fas fa-user-clock"></i> OT
         </button>
         
         <button onclick="showExportModal()" class="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl hover:shadow-lg transition shadow-md active:scale-95 btn-glow flex items-center gap-2 text-sm font-semibold">
@@ -496,12 +522,6 @@
           </div>
           
           <div>
-            <label class="block mb-1.5 font-bold text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wider">OT Staff Count</label>
-            <input type="number" id="otStaffInput" value="0" min="0" max="3" class="w-full px-4 py-3 border border-gray-300/50 dark:border-dark-border dark:bg-dark-bg/80 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100 glass">
-            <p class="text-xs text-gray-500 mt-1">Number of staff working overtime (0-3)</p>
-          </div>
-          
-          <div>
             <label class="block mb-1.5 font-bold text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wider">Status</label>
             <select id="statusInput" class="w-full px-4 py-3 border border-gray-300/50 dark:border-dark-border dark:bg-dark-bg/80 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100 glass">
               <option value="under packing">🟠 Under Packing</option>
@@ -521,6 +541,47 @@
           </button>
           <button onclick="submitEntry()" id="saveBtn" class="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold rounded-2xl hover:shadow-lg transition flex items-center justify-center gap-2 shadow-md btn-glow">
             <span id="saveText">Save Entry</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OT Staff Modal -->
+  <div id="otModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+    <div class="modal-glass rounded-3xl w-full max-w-sm shadow-2xl scale-in border border-white/40 dark:border-white/10">
+      <div class="p-6">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+            <i class="fas fa-user-clock text-xl"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">OT Staff Count</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400" id="otModalTeamDate">Team A • 18/05/2026</p>
+          </div>
+        </div>
+
+        <div class="mb-5">
+          <label class="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wider">Number of Staff Working OT</label>
+          <div class="flex items-center gap-3">
+            <button onclick="adjustOT(-1)" class="w-12 h-12 rounded-2xl glass hover:bg-white/60 dark:hover:bg-white/10 flex items-center justify-center text-xl font-bold transition">−</button>
+            <input type="number" id="otStaffInput" value="0" min="0" max="10" 
+                   class="flex-1 px-4 py-3 text-center text-2xl font-bold border border-gray-300/50 dark:border-dark-border dark:bg-dark-bg/80 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none dark:text-gray-100 glass">
+            <button onclick="adjustOT(1)" class="w-12 h-12 rounded-2xl glass hover:bg-white/60 dark:hover:bg-white/10 flex items-center justify-center text-xl font-bold transition">+</button>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Each team has 3 staff normally. Enter how many are doing OT today.</p>
+        </div>
+
+        <div class="mb-5">
+          <label class="block mb-2 font-bold text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wider">Note (Optional)</label>
+          <input type="text" id="otNoteInput" placeholder="e.g., Rush order, Evening shift" 
+                 class="w-full px-4 py-3 border border-gray-300/50 dark:border-dark-border dark:bg-dark-bg/80 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none dark:text-gray-100 glass text-sm">
+        </div>
+
+        <div class="flex gap-3">
+          <button onclick="hideOTModal()" class="flex-1 py-3.5 text-gray-600 dark:text-gray-300 font-bold border border-gray-300/50 dark:border-dark-border rounded-2xl hover:bg-white/50 dark:hover:bg-white/5 transition glass">Cancel</button>
+          <button onclick="saveOT()" id="saveOTBtn" class="flex-1 py-3.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold rounded-2xl hover:shadow-lg transition flex items-center justify-center gap-2 shadow-md btn-glow">
+            <span id="saveOTText">Save OT Record</span>
           </button>
         </div>
       </div>
@@ -646,6 +707,7 @@
     let html5QrCode = null;
     let currentQRField = null;
     let isSaving = false;
+    let isSavingOT = false;
     let allData = [];
     let filteredData = [];
     let selectedRows = new Set();
@@ -655,6 +717,7 @@
     let searchTerm = '';
     let exportMode = 'current';
     let exportFormat = 'csv';
+    let otData = [];  // Stores OT records from OT_Log sheet
 
     function createParticles() {
       const container = document.getElementById('particles');
@@ -809,6 +872,91 @@
       }
     }
 
+    // ===== OT MODAL =====
+    function showOTModal() {
+      const selectedDate = document.getElementById('dateFilter').value || formatDate(new Date());
+      document.getElementById('otModalTeamDate').textContent = `${currentTeam} • ${formatThaiDate(selectedDate)}`;
+      
+      // Find existing OT record for this date+team
+      const existing = otData.find(r => {
+        const d = String(r.date).split('T')[0];
+        return d === selectedDate && r.team === currentTeam;
+      });
+      
+      document.getElementById('otStaffInput').value = existing ? existing.otStaff : 0;
+      document.getElementById('otNoteInput').value = existing ? (existing.note || '') : '';
+      
+      document.getElementById('otModal').classList.remove('hidden');
+    }
+
+    function hideOTModal() {
+      document.getElementById('otModal').classList.add('hidden');
+      resetOTSaveButton();
+    }
+
+    function adjustOT(delta) {
+      const input = document.getElementById('otStaffInput');
+      let val = parseInt(input.value) || 0;
+      val = Math.max(0, Math.min(10, val + delta));
+      input.value = val;
+    }
+
+    function resetOTSaveButton() {
+      isSavingOT = false;
+      const btn = document.getElementById('saveOTBtn');
+      const text = document.getElementById('saveOTText');
+      btn.disabled = false;
+      text.textContent = 'Save OT Record';
+    }
+
+    async function saveOT() {
+      if (isSavingOT) return;
+      isSavingOT = true;
+      const btn = document.getElementById('saveOTBtn');
+      const text = document.getElementById('saveOTText');
+      btn.disabled = true;
+      text.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+      const date = document.getElementById('dateFilter').value || formatDate(new Date());
+      const otStaff = parseInt(document.getElementById('otStaffInput').value) || 0;
+      const note = document.getElementById('otNoteInput').value.trim();
+
+      try {
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          body: JSON.stringify({
+            action: 'saveOT',
+            date: date,
+            team: currentTeam,
+            otStaff: otStaff,
+            note: note
+          }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          hideOTModal();
+          await loadOTData();  // Refresh OT data
+          applyFilters();      // Re-render to show updated OT
+          showToast(`✅ OT saved: ${otStaff} staff`);
+        } else {
+          alert('❌ Failed: ' + (json.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Network error. Please try again.');
+      } finally {
+        resetOTSaveButton();
+      }
+    }
+
+    function formatThaiDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    // ===== EXPORT MODAL =====
     function showExportModal() {
       document.getElementById('exportModal').classList.remove('hidden');
       document.getElementById('exportTeam').value = 'current';
@@ -904,34 +1052,66 @@
           return;
         }
 
+                // Fetch OT data for export
+        const otRes = await fetch(`${WEB_APP_URL}?action=getOTData`);
+        const otJson = await otRes.json();
+        const allOTData = otJson.otData || [];
+
         const timestamp = new Date().toISOString().split('T')[0];
         let filename, content, mimeType;
 
         if (exportFormat === 'csv') {
-          const headers = ['Date', 'Customer', 'PI No.', 'Part No.', 'QTY', 'Carton', 'Packed By', 'Status', 'OT Staff', 'Team'];
+          const headers = ['Date', 'Customer', 'PI No.', 'Part No.', 'QTY', 'Carton', 'Packed By', 'Status', 'Team', 'OT_Staff'];
           const csvRows = [headers.join(',')];
-          csvRows.push(...dataToExport.map(r => [
-            r[0] || '', 
-            `"${String(r[1] || '').replace(/"/g, '""')}"`,
-            `"${String(r[2] || '').replace(/"/g, '""')}"`,
-            `"${String(r[3] || '').replace(/"/g, '""')}"`,
-            r[4] || 0, 
-            r[5] || 0,
-            `"${String(r[6] || '').replace(/"/g, '""')}"`,
-            r[7] || '',
-            r[8] || 0,
-            r[9] || ''
-          ].join(',')));
+          csvRows.push(...dataToExport.map(r => {
+            const rowDate = String(r[0]).split('T')[0];
+            const teamName = r[8] || '';
+            // Find OT for this date+team
+            const otRecord = allOTData.find(o => {
+              const od = String(o.date).split('T')[0];
+              return od === rowDate && o.team === teamName;
+            });
+            const otCount = otRecord ? otRecord.otStaff : 0;
+            
+            return [
+              r[0] || '', 
+              `"${String(r[1] || '').replace(/"/g, '""')}"`,
+              `"${String(r[2] || '').replace(/"/g, '""')}"`,
+              `"${String(r[3] || '').replace(/"/g, '""')}"`,
+              r[4] || 0, 
+              r[5] || 0,
+              `"${String(r[6] || '').replace(/"/g, '""')}"`,
+              r[7] || '',
+              teamName,
+              otCount
+            ].join(',');
+          }));
           
           content = '\ufeff' + csvRows.join('\n');
           filename = `Packing_History_${timestamp}.csv`;
           mimeType = 'text/csv;charset=utf-8;';
         } else {
-          const jsonData = dataToExport.map(r => ({
-            date: r[0], customer: r[1], piNo: r[2], partNo: r[3],
-            qty: r[4], carton: r[5], packedBy: r[6], status: r[7], 
-            otStaff: r[8], team: r[9]
-          }));
+          const jsonData = dataToExport.map(r => {
+            const rowDate = String(r[0]).split('T')[0];
+            const teamName = r[8] || '';
+            const otRecord = allOTData.find(o => {
+              const od = String(o.date).split('T')[0];
+              return od === rowDate && o.team === teamName;
+            });
+            
+            return {
+              date: r[0], 
+              customer: r[1], 
+              piNo: r[2], 
+              partNo: r[3],
+              qty: r[4], 
+              carton: r[5], 
+              packedBy: r[6], 
+              status: r[7], 
+              team: teamName,
+              otStaff: otRecord ? otRecord.otStaff : 0
+            };
+          });
           content = JSON.stringify(jsonData, null, 2);
           filename = `Packing_History_${timestamp}.json`;
           mimeType = 'application/json';
@@ -954,6 +1134,7 @@
       }
     }
 
+    // ===== BULK SELECTION =====
     function toggleSelectAll() {
       const checkboxes = document.querySelectorAll('.row-checkbox');
       const allSelected = selectedRows.size === filteredData.length && filteredData.length > 0;
@@ -1051,6 +1232,7 @@
       }
     }
 
+    // ===== DATA LOADING =====
     function showSkeleton() {
       const tbody = document.getElementById('tableBody');
       let html = '';
@@ -1065,11 +1247,16 @@
       if (!silent) showSkeleton();
       
       try {
+        // Load packing data
         const res = await fetch(`${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`);
         const json = await res.json();
         if (json.error) throw new Error(json.error);
 
         allData = (json.data || []).slice(1);
+        
+        // Load OT data
+        await loadOTData();
+        
         applyFilters();
         if (silent) showToast('🔄 Refreshed', 1500);
       } catch (e) {
@@ -1084,19 +1271,55 @@
       }
     }
 
-        // ===== THAI CARTON WARNING =====
+    async function loadOTData() {
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=getOTData`);
+        const json = await res.json();
+        otData = json.otData || [];
+        updateOTDisplay();
+      } catch (e) {
+        console.error('Failed to load OT data:', e);
+      }
+    }
+
+    function updateOTDisplay() {
+      const selectedDate = document.getElementById('dateFilter').value || formatDate(new Date());
+      const otRecord = otData.find(r => {
+        const d = String(r.date).split('T')[0];
+        return d === selectedDate && r.team === currentTeam;
+      });
+      
+      const otBar = document.getElementById('otInfoBar');
+      if (otRecord && otRecord.otStaff > 0) {
+        otBar.classList.remove('hidden');
+        document.getElementById('otDisplayText').textContent = 
+          `${currentTeam}: ${otRecord.otStaff} staff OT`;
+        document.getElementById('otDisplayDate').textContent = formatThaiDate(selectedDate);
+      } else {
+        otBar.classList.add('hidden');
+      }
+    }
+
+    // ===== THAI CARTON WARNING =====
     function checkCartonWarning(rows) {
       const banner = document.getElementById('warningBanner');
       const warningText = document.getElementById('warningText');
       const warningSubtext = document.getElementById('warningSubtext');
       
       const totalCartons = rows.reduce((sum, r) => sum + (Number(r[5]) || 0), 0);
-      const totalOT = rows.reduce((sum, r) => sum + (Number(r[8]) || 0), 0);
+      
+      // Get OT count for this date+team (NOT summed from rows)
+      const selectedDate = document.getElementById('dateFilter').value || formatDate(new Date());
+      const otRecord = otData.find(r => {
+        const d = String(r.date).split('T')[0];
+        return d === selectedDate && r.team === currentTeam;
+      });
+      const otStaff = otRecord ? otRecord.otStaff : 0;
       
       if (rows.length > 0 && totalCartons < 20) {
         banner.classList.remove('hidden');
         warningText.textContent = `กรุณาตรวจสอบ ${currentTeam} จำนวนยังไม่ครบ 20 กล่อง โปรดเพิ่มสินค้าเพื่อทำการแพ็ค`;
-        warningSubtext.textContent = `${currentTeam} • Cartons: ${totalCartons}/20 • Staff: ${totalOT} คน OT`;
+        warningSubtext.textContent = `${currentTeam} • Cartons: ${totalCartons}/20 • Staff: ${otStaff} คน OT`;
       } else {
         banner.classList.add('hidden');
       }
@@ -1111,12 +1334,10 @@
       
       const totalQty = rows.reduce((sum, r) => sum + (Number(r[4]) || 0), 0);
       const totalCartons = rows.reduce((sum, r) => sum + (Number(r[5]) || 0), 0);
-      const totalOT = rows.reduce((sum, r) => sum + (Number(r[8]) || 0), 0);
       
       document.getElementById('totalQty').textContent = totalQty.toLocaleString();
       document.getElementById('totalCartons').textContent = totalCartons.toLocaleString();
       document.getElementById('totalEntries').textContent = rows.length;
-      document.getElementById('totalOT').textContent = totalOT;
       document.getElementById('recordCount').textContent = `${rows.length} records`;
       statsBar.style.display = 'grid';
     }
@@ -1246,7 +1467,6 @@
       });
       document.getElementById('qtyInput').value = '1';
       document.getElementById('qtyCartonInput').value = '1';
-      document.getElementById('otStaffInput').value = '0';
       document.getElementById('statusInput').value = 'under packing';
       
       document.getElementById('entryModal').classList.remove('hidden');
@@ -1272,7 +1492,6 @@
       document.getElementById('qtyInput').value = row[4] || '';
       document.getElementById('qtyCartonInput').value = row[5] || '';
       document.getElementById('packedByInput').value = row[6] || '';
-      document.getElementById('otStaffInput').value = row[8] || '0';
       document.getElementById('statusInput').value = (row[7] || 'under packing').toLowerCase().trim();
       
       document.getElementById('entryModal').classList.remove('hidden');
@@ -1315,7 +1534,6 @@
       let dateVal = document.getElementById('dateInput').value;
       const status = document.getElementById('statusInput').value;
 
-      // If Next Day, move date to tomorrow
       if (status === 'next day') dateVal = getTomorrow();
 
       const payload = {
@@ -1329,7 +1547,6 @@
         qty: Number(document.getElementById('qtyInput').value) || 0,
         qtyCarton: Number(document.getElementById('qtyCartonInput').value) || 0,
         packedBy: document.getElementById('packedByInput').value.trim() || 'Unknown',
-        otStaff: Number(document.getElementById('otStaffInput').value) || 0,
         status: status
       };
 
@@ -1439,6 +1656,7 @@
         if (!document.getElementById('qrModal').classList.contains('hidden')) stopLiveQR();
         else if (!document.getElementById('entryModal').classList.contains('hidden')) hideModal();
         else if (!document.getElementById('exportModal').classList.contains('hidden')) hideExportModal();
+        else if (!document.getElementById('otModal').classList.contains('hidden')) hideOTModal();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
@@ -1470,4 +1688,4 @@
   </script>
 </body>
 </html>
-    
+        
