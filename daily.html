@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Daily Packing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            dark: { bg: '#0f172a', card: '#1e293b', border: '#334155' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; transition: background-color 0.3s, color 0.3s; }
+    
+    /* Status badges */
+    .status-under { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+    .status-next { background: linear-gradient(135deg, #92400e, #78350f); color: white; }
+    .status-packed { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+    
+    /* Dark mode status adjustments */
+    .dark .status-under { background: linear-gradient(135deg, #b45309, #92400e); }
+    .dark .status-next { background: linear-gradient(135deg, #78350f, #451a03); }
+    .dark .status-packed { background: linear-gradient(135deg, #047857, #065f46); }
+    
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .loading-pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast-in { animation: slideIn 0.3s ease-out; }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }
+    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    
+    /* Table enhancements */
+    .table-row { transition: all 0.2s; }
+    .table-row:hover { background-color: #f0f9ff; transform: scale(1.002); }
+    .dark .table-row:hover { background-color: #1e293b; }
+    .table-row.selected { background-color: #dbeafe !important; }
+    .dark .table-row.selected { background-color: #1e3a5f !important; }
+    
+    /* Sort indicators */
+    .sort-icon { opacity: 0.3; transition: opacity 0.2s; }
+    th:hover .sort-icon { opacity: 0.7; }
+    th.sort-active .sort-icon { opacity: 1; color: #6366f1; }
+    
+    /* Modal backdrop */
+    .modal-backdrop { backdrop-filter: blur(6px); }
+    
+    /* Stats cards */
+    .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .stat-card.amber { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    
+    /* Skeleton loading */
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    .dark .skeleton { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 100%; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    
+    /* Auto-refresh indicator */
+    .refresh-indicator { width: 8px; height: 8px; border-radius: 50%; background: #10b981; transition: all 0.3s; }
+    .refresh-indicator.active { animation: blink 1s infinite; }
+    .refresh-indicator.paused { background: #f59e0b; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    
+    /* Checkbox styling */
+    .custom-checkbox { appearance: none; width: 18px; height: 18px; border: 2px solid #d1d5db; border-radius: 4px; cursor: pointer; transition: all 0.2s; position: relative; }
+    .custom-checkbox:checked { background: #6366f1; border-color: #6366f1; }
+    .custom-checkbox:checked::after { content: '✓'; position: absolute; color: white; font-size: 12px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    .dark .custom-checkbox { border-color: #475569; }
+    
+    /* Search highlight */
+    .highlight { background: #fef08a; padding: 0 2px; border-radius: 2px; }
+    .dark .highlight { background: #854d0e; color: #fef08a; }
+    
+    /* Bulk action bar */
+    .bulk-bar { transform: translateY(100%); transition: transform 0.3s ease; }
+    .bulk-bar.show { transform: translateY(0); }
+  </style>
+<base target="_blank">
+</head>
+<body class="bg-gray-50 min-h-screen dark:bg-dark-bg dark:text-gray-100">
+
+  <div class="max-w-7xl mx-auto px-3 py-5">
+    <!-- Header -->
+    <div class="text-center mb-6 fade-in">
+      <div class="inline-flex items-center gap-3 mb-2">
+        <span class="text-4xl">📦</span>
+        <h1 class="text-3xl font-bold text-indigo-700 dark:text-indigo-400 tracking-tight">Daily Packing</h1>
+      </div>
+      <p class="text-gray-500 dark:text-gray-400 text-sm font-medium">Database • Team A–J • Live QR • Edit & Auto-Move</p>
+    </div>
+
+    <!-- Stats Summary -->
+    <div id="statsBar" class="grid grid-cols-3 gap-3 mb-4 fade-in" style="display:none;">
+      <div class="stat-card rounded-2xl p-3 text-white text-center shadow-lg">
+        <div class="text-xs opacity-80">Total QTY</div>
+        <div id="totalQty" class="text-2xl font-bold">0</div>
+      </div>
+      <div class="stat-card green rounded-2xl p-3 text-white text-center shadow-lg">
+        <div class="text-xs opacity-80">Cartons</div>
+        <div id="totalCartons" class="text-2xl font-bold">0</div>
+      </div>
+      <div class="bg-white dark:bg-dark-card rounded-2xl p-3 text-center shadow border border-gray-200 dark:border-dark-border">
+        <div class="text-xs text-gray-500 dark:text-gray-400">Entries</div>
+        <div id="totalEntries" class="text-2xl font-bold text-gray-700 dark:text-gray-200">0</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="bg-white dark:bg-dark-card rounded-3xl shadow-lg p-4 mb-5 fade-in border border-gray-100 dark:border-dark-border">
+      <div class="flex flex-wrap gap-3 items-end">
+        <!-- Team -->
+        <div class="flex-1 min-w-[100px]">
+          <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Team</label>
+          <select id="teamSelect" class="w-full px-3 py-2.5 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"></select>
+        </div>
+        
+        <!-- Date -->
+        <div class="flex-1 min-w-[130px]">
+          <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Date</label>
+          <input type="date" id="dateFilter" class="w-full px-3 py-2.5 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition">
+        </div>
+        
+        <!-- Date Quick Buttons -->
+        <div class="flex gap-1">
+          <button onclick="setDate('today')" class="px-2.5 py-2.5 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl text-xs font-semibold transition">Today</button>
+          <button onclick="setDate('yesterday')" class="px-2.5 py-2.5 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl text-xs font-semibold transition">-1</button>
+          <button onclick="setDate('tomorrow')" class="px-2.5 py-2.5 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl text-xs font-semibold transition">+1</button>
+        </div>
+        
+        <!-- Refresh -->
+        <button onclick="loadData()" class="px-4 py-2.5 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition shadow-md active:scale-95" title="Refresh">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+        
+        <!-- Auto-refresh Toggle -->
+        <button onclick="toggleAutoRefresh()" id="autoRefreshBtn" class="px-3 py-2.5 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl transition relative" title="Auto-refresh">
+          <div id="refreshDot" class="refresh-indicator active absolute top-1 right-1"></div>
+          <i class="fas fa-clock text-gray-600 dark:text-gray-300 text-sm"></i>
+        </button>
+        
+        <!-- Dark Mode -->
+        <button onclick="toggleDarkMode()" class="px-3 py-2.5 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl transition" title="Toggle Dark Mode">
+          <i id="darkModeIcon" class="fas fa-moon text-gray-600 dark:text-yellow-400 text-sm"></i>
+        </button>
+        
+        <!-- Export -->
+        <button onclick="exportData()" class="px-3 py-2.5 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl transition" title="Export Excel">
+          <i class="fas fa-file-excel text-green-600 text-sm"></i>
+        </button>
+        
+        <!-- New Entry -->
+        <button onclick="showAddModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl flex items-center gap-2 transition shadow-md active:scale-95 text-sm">
+          <i class="fas fa-plus"></i> New
+        </button>
+      </div>
+      
+      <!-- Search Bar -->
+      <div class="mt-3 flex gap-2">
+        <div class="flex-1 relative">
+          <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+          <input type="text" id="searchInput" placeholder="Search Customer, PI No., Part No., or Packed By..." 
+                 class="w-full pl-9 pr-4 py-2.5 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                 oninput="handleSearch()">
+        </div>
+        <button onclick="clearSearch()" class="px-3 py-2.5 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl transition text-gray-500">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white dark:bg-dark-card rounded-3xl shadow-lg overflow-hidden border border-gray-100 dark:border-dark-border fade-in relative">
+      <div class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-5 py-4 font-medium text-sm flex justify-between items-center">
+        <span><i class="fas fa-clipboard-list mr-2"></i>Packing Records</span>
+        <div class="flex items-center gap-3">
+          <span id="recordCount" class="text-xs bg-white/20 px-3 py-1 rounded-full">0 records</span>
+          <button onclick="toggleSelectAll()" id="selectAllBtn" class="text-xs bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition hidden">
+            <i class="fas fa-check-square mr-1"></i>Select All
+          </button>
+        </div>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="bg-gray-50 dark:bg-dark-bg text-gray-600 dark:text-gray-300 text-xs border-b border-gray-200 dark:border-dark-border">
+              <th class="text-center py-3 w-10">
+                <input type="checkbox" id="headerCheckbox" class="custom-checkbox" onchange="toggleSelectAll()">
+              </th>
+              <th class="text-left pl-2 py-3 font-semibold cursor-pointer select-none" onclick="sortBy(0)">
+                Date <i class="fas fa-sort sort-icon ml-1" data-col="0"></i>
+              </th>
+              <th class="text-left py-3 font-semibold cursor-pointer select-none" onclick="sortBy(1)">
+                Customer <i class="fas fa-sort sort-icon ml-1" data-col="1"></i>
+              </th>
+              <th class="text-left py-3 font-semibold cursor-pointer select-none" onclick="sortBy(2)">
+                PI No. <i class="fas fa-sort sort-icon ml-1" data-col="2"></i>
+              </th>
+              <th class="text-left py-3 font-semibold cursor-pointer select-none" onclick="sortBy(3)">
+                Part No. <i class="fas fa-sort sort-icon ml-1" data-col="3"></i>
+              </th>
+              <th class="text-center py-3 font-semibold cursor-pointer select-none" onclick="sortBy(4)">
+                QTY <i class="fas fa-sort sort-icon ml-1" data-col="4"></i>
+              </th>
+              <th class="text-center py-3 font-semibold cursor-pointer select-none" onclick="sortBy(5)">
+                Carton <i class="fas fa-sort sort-icon ml-1" data-col="5"></i>
+              </th>
+              <th class="text-left py-3 font-semibold cursor-pointer select-none" onclick="sortBy(6)">
+                By <i class="fas fa-sort sort-icon ml-1" data-col="6"></i>
+              </th>
+              <th class="text-center py-3 font-semibold cursor-pointer select-none" onclick="sortBy(7)">
+                Status <i class="fas fa-sort sort-icon ml-1" data-col="7"></i>
+              </th>
+              <th class="w-10"></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-gray-100 dark:divide-dark-border text-sm"></tbody>
+        </table>
+      </div>
+      
+      <div id="emptyState" class="hidden text-center py-12 text-gray-400 dark:text-gray-500">
+        <i class="fas fa-inbox text-4xl mb-3 text-gray-300 dark:text-gray-600"></i>
+        <p>No records found</p>
+        <p class="text-xs mt-1" id="emptyHint">Try adjusting your search or date filter</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Action Bar -->
+  <div id="bulkBar" class="bulk-bar fixed bottom-0 left-0 right-0 bg-indigo-600 text-white p-4 shadow-2xl z-40 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <span id="bulkCount" class="font-bold text-lg">0</span>
+      <span class="text-sm opacity-90">items selected</span>
+    </div>
+    <div class="flex gap-3">
+      <select id="bulkStatus" class="px-4 py-2 rounded-xl bg-white/20 text-white text-sm border border-white/30 outline-none">
+        <option value="" class="text-gray-800">Change Status to...</option>
+        <option value="under packing" class="text-gray-800">🟠 Under Packing</option>
+        <option value="next day" class="text-gray-800">🟤 Next Day</option>
+        <option value="packed" class="text-gray-800">🟢 Packed</option>
+      </select>
+      <button onclick="applyBulkStatus()" class="px-5 py-2 bg-white text-indigo-600 rounded-xl font-semibold text-sm hover:bg-gray-100 transition">
+        Apply
+      </button>
+      <button onclick="clearSelection()" class="px-4 py-2 bg-white/20 rounded-xl text-sm hover:bg-white/30 transition">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div id="entryModal" class="hidden fixed inset-0 bg-black/60 modal-backdrop flex items-end sm:items-center justify-center z-50 p-3">
+    <div class="bg-white dark:bg-dark-card rounded-3xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto fade-in border border-gray-200 dark:border-dark-border">
+      <div class="p-5">
+        <h2 id="modalTitle" class="text-xl font-bold mb-5 text-center text-gray-800 dark:text-gray-100">New Entry</h2>
+        <input type="hidden" id="editRowNum">
+        <input type="hidden" id="editOriginalDate">
+       
+        <div class="space-y-4 text-sm">
+          <div>
+            <label class="block mb-1.5 font-semibold text-gray-700 dark:text-gray-300">Date</label>
+            <input type="date" id="dateInput" class="w-full px-4 py-3 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100">
+          </div>
+          
+          <div>
+            <label class="block mb-1.5 font-semibold text-gray-700 dark:text-gray-300">Customer Name</label>
+            <div class="flex gap-2">
+              <input type="text" id="customerInput" class="flex-1 px-4 py-3 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100" placeholder="Enter customer name">
+              <button onclick="startLiveQR('customer')" class="px-4 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl text-xl transition active:scale-95">📷</button>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block mb-1.5 font-semibold text-gray-700 dark:text-gray-300">PI No.</label>
+            <div class="flex gap-2">
+              <input type="text" id="piInput" class="flex-1 px-4 py-3 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100" placeholder="Enter PI number">
+              <button onclick="startLiveQR('pi')" class="px-4 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl text-xl transition active:scale-95">📷</button>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block mb-1.5 font-semibold text-gray-700 dark:text-gray-300">Part Number</label>
+            <div class="flex gap-2">
+              <input type="text" id="partInput" class="flex-1 px-4 py-3 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100" placeholder="Enter part number">
+              <button onclick="startLiveQR('part')" class="px-4 bg-gray-100 dark:bg-dark-bg hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl text-xl transition active:scale-95">📷</button>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block mb-1.5 font-semibold text-gray-700 dark:text-gray-300">QTY</label>
+              <input type="number" id="qtyInput" value="1" min="0" class="w-full px-4 py-3 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100">
+            </div>
+            <div>
+              <label class="block mb-1.5 font-semibold text-gray-700 dark:text-gray-300">QTY Carton</label>
+              <input type="number" id="qtyCartonInput" value="1" min="0" class="w-full px-4 py-3 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block mb-1.5 font-semibold text-gray-700 dark:text-gray-300">Packed By</label>
+            <input type="text" id="packedByInput" placeholder="Staff name" class="w-full px-4 py-3 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100">
+          </div>
+          
+          <div>
+            <label class="block mb-1.5 font-semibold text-gray-700 dark:text-gray-300">Status</label>
+            <select id="statusInput" class="w-full px-4 py-3 border border-gray-300 dark:border-dark-border dark:bg-dark-bg rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-gray-100">
+              <option value="under packing">🟠 Under Packing</option>
+              <option value="next day">🟤 Next Day (Auto-move to tomorrow)</option>
+              <option value="packed">🟢 Packed</option>
+            </select>
+            <p id="nextDayHint" class="text-xs text-amber-600 mt-1 hidden"><i class="fas fa-info-circle"></i> Will automatically move to tomorrow's date</p>
+          </div>
+        </div>
+        
+        <div class="flex gap-3 mt-6 pt-4 border-t dark:border-dark-border sticky bottom-0 bg-white dark:bg-dark-card">
+          <button onclick="hideModal()" class="flex-1 py-3.5 text-gray-600 dark:text-gray-300 font-semibold border border-gray-300 dark:border-dark-border rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancel</button>
+          <button onclick="deleteEntry()" id="deleteBtn" class="hidden flex-1 py-3.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold rounded-2xl hover:bg-red-200 dark:hover:bg-red-900/50 transition">
+            <i class="fas fa-trash"></i>
+          </button>
+          <button onclick="submitEntry()" id="saveBtn" class="flex-1 py-3.5 bg-emerald-600 text-white font-semibold rounded-2xl hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-md">
+            <span id="saveText">Save Entry</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Scanner -->
+  <div id="qrModal" class="hidden fixed inset-0 bg-black z-[100] flex flex-col">
+    <div class="p-4 text-white flex justify-between items-center bg-black/50">
+      <h3 id="qrTitle" class="text-lg font-semibold">Scan QR Code</h3>
+      <button onclick="stopLiveQR()" class="text-3xl hover:text-gray-300 transition">✕</button>
+    </div>
+    <div id="qr-reader" class="flex-1"></div>
+    <div class="p-4 bg-black/50 text-center text-white text-sm">
+      Position QR code within the frame
+    </div>
+  </div>
+
+  <script>
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby8tGR_Vy7Ivb5fCjX5uaJ8NVNgSSmc2P7uULtVoKK-pwsouGTtCWjfCC_GTkpma_RS/exec';
+
+    const teams = ["Team A","Team B","Team C","Team D","Team E","Team F","Team G","Team H","Team I","Team J"];
+    let currentTeam = "Team A";
+    let html5QrCode = null;
+    let currentQRField = null;
+    let isSaving = false;
+    let allData = [];
+    let filteredData = [];
+    let selectedRows = new Set();
+    let autoRefreshInterval = null;
+    let isAutoRefresh = true;
+    let sortState = { col: null, asc: true };
+    let searchTerm = '';
+
+    function populateTeams() {
+      const sel = document.getElementById('teamSelect');
+      sel.innerHTML = teams.map(t => `<option value="${t}">${t}</option>`).join('');
+      sel.value = currentTeam;
+      sel.onchange = () => { currentTeam = sel.value; loadData(); };
+    }
+
+    function formatDate(date) { return date.toISOString().split('T')[0]; }
+    
+    function getTomorrow() {
+      const t = new Date();
+      t.setDate(t.getDate() + 1);
+      return formatDate(t);
+    }
+
+    function setDate(type) {
+      const today = new Date();
+      let target = new Date(today);
+      if (type === 'yesterday') target.setDate(today.getDate() - 1);
+      else if (type === 'tomorrow') target.setDate(today.getDate() + 1);
+      document.getElementById('dateFilter').value = formatDate(target);
+      loadData();
+    }
+
+    // ===== SEARCH =====
+    function handleSearch() {
+      searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+      applyFilters();
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      searchTerm = '';
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const selectedDate = document.getElementById('dateFilter').value;
+      
+      let rows = allData.filter(r => {
+        if (!selectedDate) return true;
+        const cell = r[0];
+        if (!cell) return false;
+        let rowDateStr = '';
+        if (typeof cell === 'string') rowDateStr = cell.split('T')[0].split(' ')[0];
+        else if (cell instanceof Date) rowDateStr = formatDate(cell);
+        else rowDateStr = String(cell).split('T')[0].split(' ')[0];
+        return rowDateStr === selectedDate;
+      });
+
+      if (searchTerm) {
+        rows = rows.filter(r => {
+          const searchable = [r[1], r[2], r[3], r[6]].map(v => (v || '').toString().toLowerCase());
+          return searchable.some(s => s.includes(searchTerm));
+        });
+      }
+
+      // Apply sorting if active
+      if (sortState.col !== null) {
+        rows.sort((a, b) => {
+          let va = a[sortState.col] || '';
+          let vb = b[sortState.col] || '';
+          
+          // Numeric sort for QTY/Carton columns
+          if (sortState.col === 4 || sortState.col === 5) {
+            va = Number(va) || 0;
+            vb = Number(vb) || 0;
+          } else {
+            va = String(va).toLowerCase();
+            vb = String(vb).toLowerCase();
+          }
+          
+          if (va < vb) return sortState.asc ? -1 : 1;
+          if (va > vb) return sortState.asc ? 1 : -1;
+          return 0;
+        });
+      }
+
+      filteredData = rows;
+      updateStats(rows);
+      renderTable(rows);
+    }
+
+    // ===== SORTING =====
+    function sortBy(col) {
+      if (sortState.col === col) {
+        sortState.asc = !sortState.asc;
+      } else {
+        sortState.col = col;
+        sortState.asc = true;
+      }
+      
+      // Update icons
+      document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.className = 'fas fa-sort sort-icon ml-1';
+        icon.parentElement.classList.remove('sort-active');
+      });
+      
+      const activeIcon = document.querySelector(`[data-col="${col}"]`);
+      if (activeIcon) {
+        activeIcon.className = `fas fa-sort-${sortState.asc ? 'up' : 'down'} sort-icon ml-1`;
+        activeIcon.parentElement.classList.add('sort-active');
+      }
+      
+      applyFilters();
+    }
+
+    // ===== AUTO REFRESH =====
+    function toggleAutoRefresh() {
+      isAutoRefresh = !isAutoRefresh;
+      const dot = document.getElementById('refreshDot');
+      const btn = document.getElementById('autoRefreshBtn');
+      
+      if (isAutoRefresh) {
+        dot.classList.remove('paused');
+        dot.classList.add('active');
+        btn.classList.add('ring-2', 'ring-indigo-400');
+        startAutoRefresh();
+        showToast('Auto-refresh ON (30s)');
+      } else {
+        dot.classList.remove('active');
+        dot.classList.add('paused');
+        btn.classList.remove('ring-2', 'ring-indigo-400');
+        stopAutoRefresh();
+        showToast('Auto-refresh OFF');
+      }
+    }
+
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      autoRefreshInterval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          loadData(true);
+        }
+      }, 30000);
+    }
+
+    function stopAutoRefresh() {
+      if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    }
+
+    // ===== DARK MODE =====
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      localStorage.setItem('darkMode', isDark);
+      document.getElementById('darkModeIcon').className = isDark ? 'fas fa-sun text-yellow-400 text-sm' : 'fas fa-moon text-gray-600 text-sm';
+    }
+
+    function initDarkMode() {
+      if (localStorage.getItem('darkMode') === 'true' || 
+          (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        document.getElementById('darkModeIcon').className = 'fas fa-sun text-yellow-400 text-sm';
+      }
+    }
+
+    // ===== EXPORT =====
+    function exportData() {
+      if (filteredData.length === 0) {
+        showToast('No data to export');
+        return;
+      }
+
+      const headers = ['Date', 'Customer', 'PI No.', 'Part No.', 'QTY', 'Carton', 'Packed By', 'Status'];
+      const csvContent = [
+        headers.join(','),
+        ...filteredData.map(r => [
+          r[0] || '', `"${(r[1] || '').replace(/"/g, '""')}"`, `"${(r[2] || '').replace(/"/g, '""')}"`,
+          `"${(r[3] || '').replace(/"/g, '""')}"`, r[4] || 0, r[5] || 0, `"${(r[6] || '').replace(/"/g, '""')}"`,
+          r[7] || ''
+        ].join(','))
+      ].join('\n');
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const dateStr = document.getElementById('dateFilter').value || 'all';
+      link.href = URL.createObjectURL(blob);
+      link.download = `Packing_${currentTeam}_${dateStr}.csv`;
+      link.click();
+      showToast('📊 Excel exported!');
+    }
+
+    // ===== BULK SELECTION =====
+    function toggleSelectAll() {
+      const checkboxes = document.querySelectorAll('.row-checkbox');
+      const allSelected = selectedRows.size === filteredData.length && filteredData.length > 0;
+      
+      if (allSelected) {
+        selectedRows.clear();
+        checkboxes.forEach(cb => cb.checked = false);
+      } else {
+        filteredData.forEach((r, i) => {
+          const realRowNum = allData.indexOf(r) + 2;
+          selectedRows.add(realRowNum);
+        });
+        checkboxes.forEach(cb => cb.checked = true);
+      }
+      updateBulkBar();
+    }
+
+    function toggleRowSelect(realRowNum, checkbox) {
+      if (checkbox.checked) {
+        selectedRows.add(realRowNum);
+      } else {
+        selectedRows.delete(realRowNum);
+      }
+      updateBulkBar();
+      
+      // Update header checkbox state
+      const headerCb = document.getElementById('headerCheckbox');
+      if (selectedRows.size === 0) headerCb.checked = false;
+      else if (selectedRows.size === filteredData.length) headerCb.checked = true;
+      else headerCb.indeterminate = true;
+    }
+
+    function updateBulkBar() {
+      const bar = document.getElementById('bulkBar');
+      const count = document.getElementById('bulkCount');
+      
+      if (selectedRows.size > 0) {
+        bar.classList.add('show');
+        count.textContent = selectedRows.size;
+        document.getElementById('selectAllBtn').classList.remove('hidden');
+      } else {
+        bar.classList.remove('show');
+        document.getElementById('selectAllBtn').classList.add('hidden');
+      }
+    }
+
+    function clearSelection() {
+      selectedRows.clear();
+      document.querySelectorAll('.row-checkbox, #headerCheckbox').forEach(cb => {
+        cb.checked = false;
+        cb.indeterminate = false;
+      });
+      updateBulkBar();
+    }
+
+    async function applyBulkStatus() {
+      const newStatus = document.getElementById('bulkStatus').value;
+      if (!newStatus) {
+        showToast('Please select a status');
+        return;
+      }
+
+      const rows = Array.from(selectedRows);
+      if (rows.length === 0) return;
+
+      // Show loading
+      const btn = event.target;
+      const originalText = btn.textContent;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      btn.disabled = true;
+
+      try {
+        // Process in batches of 5 to avoid overwhelming the server
+        for (let i = 0; i < rows.length; i += 5) {
+          const batch = rows.slice(i, i + 5);
+          const promises = batch.map(row => {
+            let extraDate = null;
+            if (newStatus === 'next day') extraDate = getTomorrow();
+            
+            return fetch(WEB_APP_URL, {
+              method: 'POST',
+              redirect: 'follow',
+              body: JSON.stringify({
+                action: 'updateStatus',
+                team: currentTeam,
+                row: row,
+                status: newStatus,
+                date: extraDate
+              }),
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+          });
+          
+          await Promise.all(promises);
+        }
+
+        clearSelection();
+        loadData();
+        showToast(`✅ ${rows.length} entries updated`);
+      } catch (err) {
+        showToast('❌ Bulk update failed');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        document.getElementById('bulkStatus').value = '';
+      }
+    }
+
+    // ===== DATA LOADING =====
+    function showSkeleton() {
+      const tbody = document.getElementById('tableBody');
+      let html = '';
+      for (let i = 0; i < 5; i++) {
+        html += `<tr class="dark:bg-dark-card"><td colspan="10" class="p-3"><div class="skeleton h-10 rounded-xl"></div></td></tr>`;
+      }
+      tbody.innerHTML = html;
+      document.getElementById('statsBar').style.display = 'none';
+    }
+
+    async function loadData(silent = false) {
+      if (!silent) showSkeleton();
+      
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+
+        allData = (json.data || []).slice(1);
+        applyFilters();
+        
+        if (silent) showToast('🔄 Refreshed', 1500);
+      } catch (e) {
+        if (!silent) {
+          document.getElementById('tableBody').innerHTML = `
+            <tr><td colspan="10" class="text-center py-10">
+              <i class="fas fa-exclamation-circle text-red-400 text-3xl mb-2"></i>
+              <p class="text-red-500">Error loading data</p>
+              <button onclick="loadData()" class="mt-2 text-indigo-600 underline text-sm">Retry</button>
+            </td></tr>`;
+        }
+      }
+    }
+
+    function updateStats(rows) {
+      const statsBar = document.getElementById('statsBar');
+      if (rows.length === 0) {
+        statsBar.style.display = 'none';
+        return;
+      }
+      
+      const totalQty = rows.reduce((sum, r) => sum + (Number(r[4]) || 0), 0);
+      const totalCartons = rows.reduce((sum, r) => sum + (Number(r[5]) || 0), 0);
+      
+      document.getElementById('totalQty').textContent = totalQty.toLocaleString();
+      document.getElementById('totalCartons').textContent = totalCartons.toLocaleString();
+      document.getElementById('totalEntries').textContent = rows.length;
+      document.getElementById('recordCount').textContent = `${rows.length} records`;
+      statsBar.style.display = 'grid';
+    }
+
+    function highlightText(text, term) {
+      if (!term || !text) return text;
+      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return text.replace(regex, '<span class="highlight">$1</span>');
+    }
+
+    function renderTable(rows) {
+      const tbody = document.getElementById('tableBody');
+      const emptyState = document.getElementById('emptyState');
+
+      if (rows.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        document.getElementById('emptyHint').textContent = searchTerm ? 'No matches for your search' : 'Try adjusting your date filter';
+        return;
+      }
+      
+      emptyState.classList.add('hidden');
+
+      let html = '';
+      rows.forEach((r) => {
+        const realRowNum = allData.indexOf(r) + 2;
+        const isSelected = selectedRows.has(realRowNum);
+        const status = (r[7] || '').toLowerCase().trim();
+        let cls = status === 'packed' ? 'status-packed' : 
+                 (status === 'next day' ? 'status-next' : 'status-under');
+        let statusLabel = r[7] || 'Under Packing';
+
+        // Highlight search terms
+        const dateCell = highlightText(r[0] || '', searchTerm);
+        const customerCell = highlightText(r[1] || '', searchTerm);
+        const piCell = highlightText(r[2] || '', searchTerm);
+        const partCell = highlightText(r[3] || '', searchTerm);
+        const byCell = highlightText(r[6] || '', searchTerm);
+
+        html += `
+          <tr class="table-row border-b border-gray-50 dark:border-dark-border ${isSelected ? 'selected' : ''}">
+            <td class="text-center py-3">
+              <input type="checkbox" class="custom-checkbox row-checkbox" 
+                     ${isSelected ? 'checked' : ''} 
+                     onchange="toggleRowSelect(${realRowNum}, this)"
+                     onclick="event.stopPropagation()">
+            </td>
+            <td class="pl-2 py-3 text-gray-600 dark:text-gray-400 text-xs">${dateCell}</td>
+            <td class="py-3 font-medium text-gray-800 dark:text-gray-200">${customerCell}</td>
+            <td class="py-3 text-gray-600 dark:text-gray-400 font-mono text-xs">${piCell}</td>
+            <td class="py-3 text-gray-600 dark:text-gray-400">${partCell}</td>
+            <td class="text-center py-3 font-semibold text-indigo-600 dark:text-indigo-400">${r[4]||''}</td>
+            <td class="text-center py-3 text-gray-600 dark:text-gray-400">${r[5]||''}</td>
+            <td class="py-3 text-gray-500 dark:text-gray-400 text-xs">${byCell}</td>
+            <td class="text-center py-3">
+              <span onclick="quickChangeStatus('${currentTeam}', ${realRowNum}, '${status}', event)"
+                    class="inline-block px-3 py-1 text-xs font-bold rounded-full ${cls} shadow-sm cursor-pointer hover:scale-105 transition">
+                ${statusLabel}
+              </span>
+            </td>
+            <td class="text-center cursor-pointer" onclick="showEditModal(${realRowNum})">
+              <i class="fas fa-pen text-gray-400 hover:text-indigo-500 transition text-xs"></i>
+            </td>
+          </tr>`;
+      });
+
+      tbody.innerHTML = html;
+      
+      // Update header checkbox
+      const headerCb = document.getElementById('headerCheckbox');
+      if (selectedRows.size === 0) {
+        headerCb.checked = false;
+        headerCb.indeterminate = false;
+      } else if (selectedRows.size === rows.length && rows.length > 0) {
+        headerCb.checked = true;
+        headerCb.indeterminate = false;
+      } else {
+        headerCb.indeterminate = true;
+      }
+    }
+
+    // Quick status change
+    async function quickChangeStatus(team, row, currentStatus, event) {
+      event.stopPropagation();
+      const options = [
+        { value: "under packing", label: "Under Packing" },
+        { value: "next day", label: "Next Day" },
+        { value: "packed", label: "Packed" }
+      ];
+      let message = "Choose new status:\n\n";
+      options.forEach((opt, i) => message += `${i+1}. ${opt.label}\n`);
+      const choice = prompt(message, "1");
+      if (!choice) return;
+      const index = parseInt(choice) - 1;
+      if (index < 0 || index >= options.length) return;
+      await updateStatus(team, row, options[index].value);
+    }
+
+    async function updateStatus(team, row, status) {
+      let extraDate = null;
+      if (status === 'next day') extraDate = getTomorrow();
+      
+      try {
+        await fetch(WEB_APP_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          body: JSON.stringify({ action: 'updateStatus', team, row, status, date: extraDate }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        loadData();
+      } catch (err) {
+        alert('Failed to update status');
+      }
+    }
+
+    // ===== MODAL MANAGEMENT =====
+    function showAddModal() {
+      document.getElementById('modalTitle').textContent = 'New Entry';
+      document.getElementById('editRowNum').value = '';
+      document.getElementById('deleteBtn').classList.add('hidden');
+      
+      const today = document.getElementById('dateFilter').value || formatDate(new Date());
+      document.getElementById('dateInput').value = today;
+      
+      ['customerInput','piInput','partInput','packedByInput'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('qtyInput').value = '1';
+      document.getElementById('qtyCartonInput').value = '1';
+      document.getElementById('statusInput').value = 'under packing';
+      
+      document.getElementById('entryModal').classList.remove('hidden');
+      setupStatusListener();
+    }
+
+    function showEditModal(rowNum) {
+      if (selectedRows.size > 0) return; // Don't open edit if selecting
+      
+      const row = allData[rowNum - 2];
+      if (!row) return;
+
+      document.getElementById('modalTitle').textContent = 'Edit Entry';
+      document.getElementById('editRowNum').value = rowNum;
+      document.getElementById('editOriginalDate').value = row[0] || '';
+      document.getElementById('deleteBtn').classList.remove('hidden');
+      
+      document.getElementById('dateInput').value = row[0] || '';
+      document.getElementById('customerInput').value = row[1] || '';
+      document.getElementById('piInput').value = row[2] || '';
+      document.getElementById('partInput').value = row[3] || '';
+      document.getElementById('qtyInput').value = row[4] || '';
+      document.getElementById('qtyCartonInput').value = row[5] || '';
+      document.getElementById('packedByInput').value = row[6] || '';
+      document.getElementById('statusInput').value = (row[7] || 'under packing').toLowerCase().trim();
+      
+      document.getElementById('entryModal').classList.remove('hidden');
+      setupStatusListener();
+    }
+
+    function setupStatusListener() {
+      const statusSelect = document.getElementById('statusInput');
+      const hint = document.getElementById('nextDayHint');
+      const check = () => {
+        if (statusSelect.value === 'next day') hint.classList.remove('hidden');
+        else hint.classList.add('hidden');
+      };
+      statusSelect.onchange = check;
+      check();
+    }
+
+    function hideModal() {
+      document.getElementById('entryModal').classList.add('hidden');
+      resetSaveButton();
+    }
+
+    function resetSaveButton() {
+      isSaving = false;
+      const btn = document.getElementById('saveBtn');
+      const text = document.getElementById('saveText');
+      btn.disabled = false;
+      text.innerHTML = "Save Entry";
+    }
+
+    async function submitEntry() {
+      if (isSaving) return;
+      isSaving = true;
+      const btn = document.getElementById('saveBtn');
+      const text = document.getElementById('saveText');
+      btn.disabled = true;
+      text.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
+      const isEdit = document.getElementById('editRowNum').value !== '';
+      let dateVal = document.getElementById('dateInput').value;
+      const status = document.getElementById('statusInput').value;
+
+      if (status === 'next day') dateVal = getTomorrow();
+
+      const payload = {
+        action: isEdit ? 'updateEntry' : 'addEntry',
+        team: currentTeam,
+        row: isEdit ? parseInt(document.getElementById('editRowNum').value) : null,
+        date: dateVal,
+        customer: document.getElementById('customerInput').value.trim(),
+        pi: document.getElementById('piInput').value.trim(),
+        part: document.getElementById('partInput').value.trim(),
+        qty: Number(document.getElementById('qtyInput').value) || 0,
+        qtyCarton: Number(document.getElementById('qtyCartonInput').value) || 0,
+        packedBy: document.getElementById('packedByInput').value.trim() || 'Unknown',
+        status: status
+      };
+
+      if (!payload.customer || !payload.pi || !payload.part) {
+        alert("Customer, PI No. and Part Number are required!");
+        resetSaveButton();
+        return;
+      }
+
+      try {
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          body: JSON.stringify(payload),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          hideModal();
+          loadData();
+          if (!isEdit) ['customerInput','piInput','partInput'].forEach(id => document.getElementById(id).value = '');
+          showToast(isEdit ? "✅ Updated!" : "✅ Saved!");
+        } else {
+          alert("❌ Failed: " + (json.error || "Unknown error"));
+        }
+      } catch (e) {
+        alert("Network error. Please try again.");
+      } finally {
+        resetSaveButton();
+      }
+    }
+
+    async function deleteEntry() {
+      const rowNum = document.getElementById('editRowNum').value;
+      if (!rowNum) return;
+      if (!confirm('Delete this entry permanently?')) return;
+
+      try {
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          redirect: 'follow',
+          body: JSON.stringify({ action: 'deleteEntry', team: currentTeam, row: parseInt(rowNum) }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const json = await res.json();
+        if (json.success) {
+          hideModal();
+          loadData();
+          showToast("🗑️ Deleted");
+        }
+      } catch (e) {
+        alert("Network error");
+      }
+    }
+
+    // ===== QR SCANNER =====
+    async function startLiveQR(field) {
+      currentQRField = field;
+      document.getElementById('qrModal').classList.remove('hidden');
+      document.getElementById('qrTitle').textContent = `Scan ${field.toUpperCase()}`;
+      if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 12, qrbox: { width: 260, height: 260 } },
+          (text) => {
+            const inputId = currentQRField === 'customer' ? 'customerInput' : 
+                           currentQRField === 'pi' ? 'piInput' : 'partInput';
+            document.getElementById(inputId).value = text;
+            stopLiveQR();
+          },
+          () => {}
+        );
+      } catch (err) {
+        alert("Camera access required.");
+      }
+    }
+
+    function stopLiveQR() {
+      if (html5QrCode) html5QrCode.stop().catch(() => {});
+      document.getElementById('qrModal').classList.add('hidden');
+      currentQRField = null;
+    }
+
+    // ===== TOAST =====
+    function showToast(message, duration = 2500) {
+      const existing = document.querySelector('.toast-notification');
+      if (existing) existing.remove();
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast-notification toast-in fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-800 dark:bg-gray-700 text-white px-6 py-3 rounded-2xl shadow-lg z-[200] text-sm font-medium';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    // ===== KEYBOARD SHORTCUTS =====
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!document.getElementById('qrModal').classList.contains('hidden')) stopLiveQR();
+        else if (!document.getElementById('entryModal').classList.contains('hidden')) hideModal();
+      }
+      // Ctrl/Cmd + F to focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('searchInput').focus();
+      }
+    });
+
+    // ===== INIT =====
+    window.onload = () => {
+      populateTeams();
+      initDarkMode();
+      const today = formatDate(new Date());
+      document.getElementById('dateFilter').value = today;
+      document.getElementById('dateFilter').onchange = () => { sortState = { col: null, asc: true }; applyFilters(); };
+      document.getElementById('autoRefreshBtn').classList.add('ring-2', 'ring-indigo-400');
+      startAutoRefresh();
+      loadData();
+    };
+
+    // Pause auto-refresh when hidden
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        stopAutoRefresh();
+      } else if (isAutoRefresh) {
+        startAutoRefresh();
+        loadData(true);
+      }
+    });
+  </script>
+</body>
+</html>
