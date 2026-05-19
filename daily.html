@@ -1192,20 +1192,37 @@
 
     async function loadData(silent = false) {
       if (!silent) showSkeleton();
+      console.log('[loadData] Starting fetch for team:', currentTeam);
+      console.log('[loadData] URL:', `${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`);
       try {
         const res = await fetch(`${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`);
-        const json = await res.json();
+        console.log('[loadData] Response status:', res.status, res.statusText);
+        const text = await res.text();
+        console.log('[loadData] Raw response (first 500 chars):', text.substring(0, 500));
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch(parseErr) {
+          console.error('[loadData] JSON parse error:', parseErr);
+          console.error('[loadData] Raw text:', text);
+          throw new Error('Server returned invalid JSON');
+        }
+        console.log('[loadData] Parsed JSON:', json);
         if (json.error) throw new Error(json.error);
         allData = (json.data || []).slice(1);
+        console.log('[loadData] allData loaded, rows:', allData.length);
+        console.log('[loadData] First row sample:', allData[0]);
         await loadOTData();
         applyFilters();
         if (silent) showToast('🔄 Refreshed', 1500);
       } catch (e) {
+        console.error('[loadData] ERROR:', e);
         if (!silent) {
           document.getElementById('tableBody').innerHTML = `
             <tr><td colspan="10" class="text-center py-10">
               <i class="fas fa-exclamation-circle text-red-400 text-3xl mb-2 block"></i>
-              <p class="text-red-500">Error loading data</p>
+              <p class="text-red-500">Error loading data: ${e.message}</p>
+              <p class="text-xs text-gray-400 mt-1">Check browser console (F12) for details</p>
               <button onclick="loadData()" class="mt-2 text-indigo-600 underline text-sm">Retry</button>
             </td></tr>`;
         }
