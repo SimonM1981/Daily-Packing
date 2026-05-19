@@ -272,6 +272,14 @@
       </div>
     </div>
 
+    <!-- Test Connection Button -->
+    <div class="mb-3 fade-in">
+      <button onclick="testConnection()" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold transition shadow-sm">
+        <i class="fas fa-bug mr-1"></i> Test Connection
+      </button>
+      <span id="testResult" class="ml-2 text-xs text-gray-500"></span>
+    </div>
+
     <!-- OT Info Bar - ALWAYS VISIBLE -->
     <div id="otInfoBar" class="mb-4 fade-in">
       <div class="glass rounded-2xl p-3 flex items-center justify-between shadow-lg border border-purple-300/30">
@@ -336,6 +344,7 @@
           <button onclick="setDate('today')" class="px-3 py-2.5 glass hover:bg-white/50 dark:hover:bg-white/10 rounded-xl text-xs font-bold transition shadow-sm">Today</button>
           <button onclick="setDate('yesterday')" class="px-3 py-2.5 glass hover:bg-white/50 dark:hover:bg-white/10 rounded-xl text-xs font-bold transition shadow-sm">-1</button>
           <button onclick="setDate('tomorrow')" class="px-3 py-2.5 glass hover:bg-white/50 dark:hover:bg-white/10 rounded-xl text-xs font-bold transition shadow-sm">+1</button>
+          <button onclick="clearDateFilter()" class="px-3 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition shadow-sm">All</button>
         </div>
         
         <button onclick="loadData()" class="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl hover:shadow-lg transition shadow-md active:scale-95 btn-glow" title="Refresh">
@@ -728,6 +737,38 @@
       return s;
     }
 
+    async function testConnection() {
+      const result = document.getElementById('testResult');
+      result.textContent = 'Testing...';
+      result.style.color = '#f59e0b';
+      try {
+        const res = await fetch(`${WEB_APP_URL}?action=getTeamData&team=${encodeURIComponent(currentTeam)}`);
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); } catch(e) { 
+          result.textContent = 'Invalid JSON response'; 
+          result.style.color = '#ef4444';
+          console.error('Raw response:', text);
+          return; 
+        }
+        if (json.error) {
+          result.textContent = 'Error: ' + json.error;
+          result.style.color = '#ef4444';
+        } else if (json.data) {
+          const rowCount = json.data.length - 1; // minus header
+          result.textContent = '✅ Connected! ' + rowCount + ' rows in ' + currentTeam;
+          result.style.color = '#10b981';
+          console.log('[testConnection] Full data:', json.data);
+        } else {
+          result.textContent = 'Unexpected response';
+          result.style.color = '#ef4444';
+        }
+      } catch(e) {
+        result.textContent = 'Failed: ' + e.message;
+        result.style.color = '#ef4444';
+      }
+    }
+
     function createParticles() {
       const container = document.getElementById('particles');
       for (let i = 0; i < 30; i++) {
@@ -772,6 +813,12 @@
       else if (type === 'tomorrow') target.setDate(today.getDate() + 1);
       document.getElementById('dateFilter').value = formatDate(target);
       loadData();
+    }
+
+    function clearDateFilter() {
+      document.getElementById('dateFilter').value = '';
+      applyFilters();
+      showToast('Showing all dates');
     }
 
     function handleSearch() {
