@@ -1691,8 +1691,8 @@
 
     function highlightText(text, term) {
       if (!term || !text) return text;
-      const regex = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-      return String(text).replace(regex, '<span class="highlight">$1</span>');
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp('(' + escaped + ')', 'gi');
     }
 
     function renderTable(rows) {
