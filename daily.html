@@ -993,7 +993,7 @@
   </div>
 
   <script>
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwu4UqQozBH6cr_9o6IEC7cCcWCNuaG0ZWz3IoERTBIDOKEH4Pk6SQl5gQGraND2--9/exec';
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyZQXq8w-Be9lTLpLtX4g_ZdDW7ei-kw5zqAv0CG_Yuke7r0H23mzcGTbcENTLMMgzg/exec';
     const teams = ["Team A","Team B","Team C","Team D","Team E","Team F","Team G","Team H","Team I","Team J"];
 
     let currentTeam = "Team A";
@@ -1652,6 +1652,8 @@
           team: String(r.team || '').trim(),
           otStaff: Number(r.otStaff) || 0
         }));
+        console.log('[OT] Loaded', otData.length, 'records');
+        console.log('[OT] Sample:', otData[0]);
         updateOTDisplay();
       } catch (e) {
         console.error('[OT] Failed to load OT data:', e);
@@ -1662,27 +1664,53 @@
       const selectedDate = document.getElementById('dateFilter').value || formatDate(new Date());
       const normSelectedDate = normDate(selectedDate);
 
+      console.log('[OT Display] Selected date:', normSelectedDate, 'Team:', currentTeam);
+      console.log('[OT Display] Available OT records:', otData.length);
+
       if (currentTeam === 'all') {
-        const totalOT = otData
-          .filter(r => normDate(r.date) === normSelectedDate)
-          .reduce((sum, r) => sum + (Number(r.otStaff) || 0), 0);
+        // For "All Teams", show total OT for selected date, or most recent if none
+        let matchingOT = otData.filter(r => normDate(r.date) === normSelectedDate);
+        if (matchingOT.length === 0 && otData.length > 0) {
+          // No exact match - use most recent date
+          const sorted = [...otData].sort((a, b) => new Date(b.date) - new Date(a.date));
+          const mostRecentDate = normDate(sorted[0].date);
+          matchingOT = otData.filter(r => normDate(r.date) === mostRecentDate);
+          document.getElementById('otDisplayDate').textContent = formatThaiDate(mostRecentDate) + ' (most recent)';
+        } else {
+          document.getElementById('otDisplayDate').textContent = formatThaiDate(normSelectedDate);
+        }
+
+        const totalOT = matchingOT.reduce((sum, r) => sum + (Number(r.otStaff) || 0), 0);
         document.getElementById('otDisplayText').textContent =
           totalOT > 0
             ? `All Teams: ${totalOT} staff OT total`
             : `All Teams: No OT today`;
-        document.getElementById('otDisplayDate').textContent = formatThaiDate(normSelectedDate);
         return;
       }
 
-      const otRecord = otData.find(r => normDate(r.date) === normSelectedDate && r.team.trim() === currentTeam.trim());
+      // For specific team
+      let otRecord = otData.find(r => normDate(r.date) === normSelectedDate && r.team.trim() === currentTeam.trim());
+
+      if (!otRecord && otData.length > 0) {
+        // No exact match - find most recent for this team
+        const teamRecords = otData.filter(r => r.team.trim() === currentTeam.trim());
+        if (teamRecords.length > 0) {
+          const sorted = teamRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+          otRecord = sorted[0];
+          document.getElementById('otDisplayDate').textContent = formatThaiDate(normDate(otRecord.date)) + ' (most recent)';
+        } else {
+          document.getElementById('otDisplayDate').textContent = formatThaiDate(normSelectedDate);
+        }
+      } else {
+        document.getElementById('otDisplayDate').textContent = formatThaiDate(normSelectedDate);
+      }
+
       const otCount = otRecord ? Number(otRecord.otStaff) : 0;
 
       document.getElementById('otDisplayText').textContent =
         otCount > 0
           ? `${currentTeam}: ${otCount} staff OT`
           : `${currentTeam}: No OT today`;
-
-      document.getElementById('otDisplayDate').textContent = formatThaiDate(normSelectedDate);
     }
 
     // ===== THAI CARTON WARNING =====
