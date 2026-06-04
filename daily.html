@@ -1429,7 +1429,8 @@ function applyFilters() {
       autoRefreshInterval = setInterval(() => {
         if (document.visibilityState === 'visible') {
           if (currentTab === 'packing') loadData(true);
-          else loadUrgentData(true);
+          else if (currentTab === 'urgent') loadUrgentData(true);
+          // Performance tab does NOT auto-refresh to avoid interrupting user
         }
       }, 30000);
     }
@@ -2625,12 +2626,16 @@ function applyFilters() {
     }
 
     async function loadPerformanceData() {
+      if (window.isLoadingPerformance) return;
+      window.isLoadingPerformance = true;
+
       const fromDate = document.getElementById('perfFromDate').value;
       const toDate = document.getElementById('perfToDate').value;
       const teamFilter = document.getElementById('perfTeamFilter').value;
 
       if (!fromDate || !toDate) {
         showToast('Please select From and To dates');
+        window.isLoadingPerformance = false;
         return;
       }
 
@@ -2690,6 +2695,8 @@ function applyFilters() {
       } catch (e) {
         console.error('[Performance] ERROR:', e);
         showToast('❌ Failed to load performance data');
+      } finally {
+        window.isLoadingPerformance = false;
       }
     }
 
@@ -2844,6 +2851,20 @@ function applyFilters() {
       document.getElementById('urgentTeamFilter').onchange = applyUrgentFilters;
       document.getElementById('urgentStatusFilter').onchange = applyUrgentFilters;
       document.getElementById('urgentDateFilter').onchange = applyUrgentFilters;
+
+      // Performance date inputs - debounced to avoid double-trigger when picking both dates
+      let perfDateTimeout = null;
+      function onPerfDateChange() {
+        if (perfDateTimeout) clearTimeout(perfDateTimeout);
+        perfDateTimeout = setTimeout(() => {
+          if (currentTab === 'performance') loadPerformanceData();
+        }, 500);
+      }
+      document.getElementById('perfFromDate').onchange = onPerfDateChange;
+      document.getElementById('perfToDate').onchange = onPerfDateChange;
+      document.getElementById('perfTeamFilter').onchange = () => {
+        if (currentTab === 'performance') loadPerformanceData();
+      };
     };
 
     document.addEventListener('visibilitychange', () => {
@@ -2851,7 +2872,8 @@ function applyFilters() {
       else if (isAutoRefresh) { 
         startAutoRefresh(); 
         if (currentTab === 'packing') loadData(true); 
-        else loadUrgentData(true); 
+        else if (currentTab === 'urgent') loadUrgentData(true);
+        // Performance tab: no auto-refresh on visibility change
       }
     });
   </script>
