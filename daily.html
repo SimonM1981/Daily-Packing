@@ -2949,16 +2949,13 @@ function applyFilters() {
         else if (!document.getElementById('exportModal').classList.contains('hidden')) hideExportModal();
         else if (!document.getElementById('otModal').classList.contains('hidden')) hideOTModal();
         else if (!document.getElementById('takeUrgentModal').classList.contains('hidden')) hideTakeUrgentModal();
+        else if (!document.getElementById('editUrgentModal').classList.contains('hidden')) hideEditUrgentModal();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         if (currentTab === 'packing') {
           document.getElementById('searchInput').focus();
         }
-      }
-      // Escape key for edit urgent modal
-      if (!document.getElementById('editUrgentModal').classList.contains('hidden')) {
-        hideEditUrgentModal();
       }
     });
 
